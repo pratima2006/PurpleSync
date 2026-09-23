@@ -1,6 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
 @import 'tailwindcss';
-@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -97,7 +96,7 @@
 }
 
 @layer base {
-  * { @apply border-border; }
+    * { @apply border-border; }
   body { @apply font-sans antialiased bg-background text-foreground; }
 }
 
