@@ -4,10 +4,9 @@ import {
   FileText,
   Info,
   CalendarDays,
-  Trophy,
   X,
 } from 'lucide-react';
-import { updates } from '../components/data';
+import * as dataModule from '../components/data';
 import { MetricCard } from '../components/MetricCard';
 import { SectionHeading } from '../components/SectionHeading';
 import type { PageKey } from '../components/types';
@@ -19,8 +18,36 @@ type HomeProps = {
 };
 
 export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
+  // Live data - data.ts se
+  const updates: any[] = (dataModule as any).updates || [];
+  const achievements: any[] = (dataModule as any).achievements || (dataModule as any).archive || [];
+  const votingDesks: any[] = (dataModule as any).votingDesks || (dataModule as any).votings || (dataModule as any).voting || [];
+  const scheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
+
+  // 1. Voting box - main imp voting
+  const liveVotingCount = votingDesks.length > 0? votingDesks.length.toString().padStart(2, '0') : "02";
+
+  // 2. Next Up box - schedule page se sabse nazdeek wala
+  const nextSchedule = scheduleItems[0];
+
+  // 3. This month - updates ka count
+  const thisMonthValue = updates.length > 0? updates.length.toString().padStart(2, '0') : "08";
+
+  // 4. On Record - achievements ka total count
+  const archiveCount = achievements.length > 0? achievements.length.toString() : "147";
+
+  // Recent 3 - updates page ke 'All' se
+  const recentUpdates = updates.slice(0, 3);
+
+  // Calendar box - schedule ka first item
+  const calendarEvent = nextSchedule;
+
+  // Last wala On Record box - achievements ka first item
+  const latestArchive = achievements[0];
+
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
+      {/* 1. HERO BOX - NO CHANGE - Jaise tha waise hi */}
       <section className="ps-hero-glow ps-paper-grid relative overflow-hidden rounded-[26px] border border-[#e0d8ed] bg-[#f5f0fb] px-6 py-8 md:px-10 md:py-11">
         <div className="relative max-w-[650px]">
           <div className="flex items-center gap-2 text-[#8068a9]">
@@ -54,26 +81,27 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         </div>
       </section>
 
+      {/* 2. 4 WHITE BOXES - AB LIVE */}
       <div className="ps-stagger mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           label="LIVE VOTING"
-          value="02"
+          value={liveVotingCount}
           detail="windows need your attention"
           tone="purple"
         />
         <MetricCard
           label="NEXT UP"
-          value="20 JUN"
-          detail="press conference · 19:00 KST"
+          value={calendarEvent?.dayLabel || calendarEvent?.dateShort || "20 JUN"}
+          detail={calendarEvent?.title? `${calendarEvent.title} · ${calendarEvent.time || '19:00 KST'}` : "press conference · 19:00 KST"}
         />
         <MetricCard
           label="THIS MONTH"
-          value="08"
+          value={thisMonthValue}
           detail="official updates logged"
         />
         <MetricCard
           label="ON RECORD"
-          value="147"
+          value={archiveCount}
           detail="achievements in the archive"
         />
       </div>
@@ -98,6 +126,7 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
       )}
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[1.16fr_.84fr]">
+        {/* 3. RECENT 3 UPDATES - All updates se */}
         <section>
           <SectionHeading
             eyebrow="RECENTLY ON THE DESK"
@@ -113,19 +142,19 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
             }
           />
           <div className="ps-panel overflow-hidden rounded-2xl">
-            {updates.slice(0, 3).map((item, index) => (
+            {recentUpdates.map((item, index) => (
               <article
                 key={item.id}
                 className={`group flex gap-4 px-5 py-5 ${
-                  index !== 2 ? 'border-b border-[#eeeaf3]' : ''
+                  index!== 2? 'border-b border-[#eeeaf3]' : ''
                 }`}
               >
                 <div
                   className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                     item.accent === 'gold'
-                      ? 'bg-[#f5ead1] text-[#96733a]'
+                     ? 'bg-[#f5ead1] text-[#96733a]'
                       : item.accent === 'blue'
-                        ? 'bg-[#e3ebf3] text-[#5c7791]'
+                       ? 'bg-[#e3ebf3] text-[#5c7791]'
                         : 'bg-[#eee5f7] text-[#77599f]'
                   }`}
                 >
@@ -157,6 +186,7 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           </div>
         </section>
 
+        {/* 4. CALENDAR BOX - schedule page se */}
         <section>
           <SectionHeading
             eyebrow="NEXT ON THE CALENDAR"
@@ -174,18 +204,18 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           <div className="ps-panel rounded-2xl p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 flex-col items-center justify-center rounded-xl bg-[#60438f] text-white">
-                <span className="ps-mono text-[9px] text-[#d4c2ef]">JUN</span>
-                <span className="text-[24px] font-semibold leading-6">20</span>
+                <span className="ps-mono text-[9px] text-[#d4c2ef]">{calendarEvent?.month || "JUN"}</span>
+                <span className="text-[24px] font-semibold leading-6">{calendarEvent?.day || "20"}</span>
               </div>
               <div>
                 <p className="ps-mono text-[9px] text-[#907aa9]">
-                  FRIDAY · 19:00 KST
+                  {calendarEvent?.fullDate || "FRIDAY · 19:00 KST"}
                 </p>
                 <h3 className="mt-1 text-[14px] font-semibold leading-5 text-[#3c324a]">
-                  Press conference
+                  {calendarEvent?.title || "Press conference"}
                 </h3>
                 <p className="mt-1 text-[11px] text-[#958a9c]">
-                  BTS WORLD TOUR “ARIRANG”
+                  {calendarEvent?.subtitle || 'BTS WORLD TOUR “ARIRANG”'}
                 </p>
               </div>
             </div>
@@ -210,6 +240,7 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         </section>
       </div>
 
+      {/* 5. ON RECORD BOX - achievements page se - AB LIVE */}
       <section className="mt-12">
         <SectionHeading
           eyebrow="A QUIET MOMENT IN THE ARCHIVE"
@@ -229,11 +260,10 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           <div className="absolute -right-5 top-7 h-36 w-36 rounded-full border border-[#695887]" />
           <div className="relative max-w-[640px]">
             <p className="ps-mono text-[9px] text-[#bda9df]">
-              18 JUNE 2025 · ACHIEVEMENT 147
+              {latestArchive? `${latestArchive.date} · ACHIEVEMENT ${latestArchive.id}` : "18 JUNE 2025 · ACHIEVEMENT 147"}
             </p>
             <p className="ps-display mt-5 text-[29px] leading-[1.05] md:text-[38px]">
-              “The first group to place three albums at No. 1 across three
-              different decades.”
+              {latestArchive? `“${latestArchive.title}”` : "“The first group to place three albums at No. 1 across three different decades.”"}
             </p>
             <p className="mt-5 text-[11px] leading-5 text-[#c0b5d2]">
               A growing archive of the milestones that keep changing the shape
