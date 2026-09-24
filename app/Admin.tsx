@@ -1,150 +1,218 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { X, Plus } from 'lucide-react';
 
 const PASSWORD = "borahae13";
+
+type AdminItem = {
+  id: number;
+  title: string;
+  platform: string;
+  closes: string;
+  closeDate?: string;
+  note: string;
+  description: string;
+  status: 'open' | 'ended' | 'upcoming';
+  voteType: 'app' | 'website';
+  webLink: string;
+  playStoreLink: string;
+};
+
+function formatTwoUnits(dateStr?: string, fallback?: string) {
+  if (!dateStr) return fallback || 'Closes soon';
+  const diff = new Date(dateStr).getTime() - Date.now();
+  if (diff <= 0) return 'Closed';
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / (1000 * 60)) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+  if (d > 0) return `Closes in ${d}d ${String(h).padStart(2,'0')}h`;
+  if (h > 0) return `Closes in ${h}h ${String(m).padStart(2,'0')}m`;
+  if (m > 0) return `Closes in ${m}m ${String(s).padStart(2,'0')}s`;
+  return `Closes in ${s}s`;
+}
+
+function formatFourUnits(dateStr?: string, fallback?: string) {
+  if (!dateStr) return fallback || '--';
+  const diff = new Date(dateStr).getTime() - Date.now();
+  if (diff <= 0) return 'Closed';
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / (1000 * 60)) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+  const parts = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0 || d > 0) parts.push(`${h}h`);
+  if (m > 0 || h > 0 || d > 0) parts.push(`${m}m`);
+  parts.push(`${s}s`);
+  return parts.join(' ');
+}
 
 export function Admin() {
   const [auth, setAuth] = useState(false);
   const [pass, setPass] = useState("");
   const [type, setType] = useState<'votingItems'|'updates'|'scheduleItems'|'achievementItems'>('votingItems');
+  const [items, setItems] = useState<AdminItem[]>([]);
   const [form, setForm] = useState<any>({
     title: '',
     platform: 'MNET PLUS',
     voteType: 'app',
     webLink: '',
     playStoreLink: '',
-    appStoreLink: '',
-    closes: 'Closes in 18h 42m',
+    closeDate: '',
     note: 'Daily votes available',
-    description: 'Global Fan Choice voting. Vote once per day. Extra votes via ads.',
+    description: 'Vote once per day on the official platform.',
     status: 'open',
-    progress: 68
   });
-  const [isFocused, setIsFocused] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setTick(v => v + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    if (!auth) return;
+    const old = JSON.parse(localStorage.getItem(`ps_admin_${type}`) || '[]');
+    setItems(old);
+  }, [auth, type]);
+
+  const liveClosesTwo = useMemo(() => formatTwoUnits(form.closeDate, undefined), [form.closeDate, tick]);
+  const liveClosesFour = useMemo(() => formatFourUnits(form.closeDate, undefined), [form.closeDate, tick]);
 
   const save = () => {
-    if (!form.title) return alert('Title daal pehle');
+    if (!form.title.trim()) return alert('Title is required');
+    if (!form.webLink.trim()) return alert('Voting link is required');
+    if (!form.closeDate) return alert('Please select close date');
     const key = `ps_admin_${type}`;
     const old = JSON.parse(localStorage.getItem(key) || '[]');
-    const newItem = {
+    const newItem: AdminItem = {
       id: Date.now(),
-      title: form.title,
-      platform: form.platform,
-      closes: form.closes,
+      title: form.title.trim(),
+      platform: form.platform || 'MNET PLUS',
+      closes: formatTwoUnits(form.closeDate),
+      closeDate: form.closeDate,
       note: form.note,
       description: form.description,
       status: form.status,
-      progress: Number(form.progress),
       voteType: form.voteType,
-      webLink: form.webLink,
-      playStoreLink: form.playStoreLink,
-      appStoreLink: form.appStoreLink,
+      webLink: form.webLink.trim(),
+      playStoreLink: form.playStoreLink.trim(),
     };
-    localStorage.setItem(key, JSON.stringify([newItem,...old]));
-    alert(`${form.title} added! Voting page pe aa jayega.`);
-    setForm({...form, title: '', webLink: '' });
+    const updated = [newItem,...old];
+    localStorage.setItem(key, JSON.stringify(updated));
+    setItems(updated);
+    setForm({...form, title: '', webLink: '', closeDate: '' });
+  };
+
+  const deleteItem = (id: number) => {
+    if (!confirm('Delete this entry?')) return;
+    const key = `ps_admin_${type}`;
+    const updated = items.filter(i => i.id!== id);
+    localStorage.setItem(key, JSON.stringify(updated));
+    setItems(updated);
+  };
+
+  const resetForm = () => {
+    setForm({
+      title: '', platform: 'MNET PLUS', voteType: 'app', webLink: '', playStoreLink: '',
+      closeDate: '', note: 'Daily votes available', description: 'Vote once per day on the official platform.', status: 'open',
+    });
   };
 
   if (!auth) return (
-    <div className="p-10 max-w-sm mx-auto"><h1 className="font-bold">Owner Login</h1><input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="borahae13" className="w-full border p-2 rounded mt-3" /><button onClick={()=> pass===PASSWORD? setAuth(true): alert('Wrong')} className="w-full bg-[#60438f] text-white p-2 rounded mt-3">Login</button></div>
+    <div className="p-10 max-w-sm mx-auto">
+      <h1 className="font-semibold text-[18px]">Admin Access</h1>
+      <p className="text-[12px] text-[#8e819c] mt-1">Restricted</p>
+      <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Password" className="w-full border border-[#e0d4ed] p-3 rounded-xl mt-4 outline-none focus:border-[#60438f]" />
+      <button onClick={()=> pass===PASSWORD? setAuth(true): alert('Incorrect password')} className="w-full bg-[#60438f] text-white p-3 rounded-xl mt-3 font-medium">Continue</button>
+    </div>
   );
 
   return (
     <div className="p-6 max-w-xl mx-auto pb-24">
-      <h1 className="text-xl font-bold">PurpleSync Admin - No Code</h1>
-      <select value={type} onChange={e=>setType(e.target.value as any)} className="w-full border p-2 rounded mt-4">
-        <option value="votingItems">Voting Box</option>
-        <option value="updates">Update</option>
+      <div className="flex items-center justify-between">
+        <h1 className="text-[20px] font-semibold tracking-tight">Admin Panel</h1>
+        <button onClick={resetForm} className="flex items-center gap-1.5 border border-[#e0d4ed] px-3 py-2 rounded-full text-[11px] font-medium hover:bg-[#f6f1fb]">
+          <Plus size={14} /> New
+        </button>
+      </div>
+
+      <select value={type} onChange={e=>setType(e.target.value as any)} className="w-full border border-[#e0d4ed] p-3 rounded-xl mt-5 bg-white text-[13px]">
+        <option value="votingItems">Voting</option>
+        <option value="updates">Updates</option>
         <option value="scheduleItems">Schedule</option>
-        <option value="achievementItems">Achievement</option>
+        <option value="achievementItems">Achievements</option>
       </select>
 
       {type === 'votingItems' && (
         <>
-          <p className="ps-mono text-[9px] text-[#8068a9] mt-6 mb-2">LIVE PREVIEW - Exact same as Voting page</p>
-
-          {/* SAME BOX AS PIC */}
-          <article className="ps-panel rounded-2xl p-5 md:p-6 border border-[#e0d4ed] bg-white">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className={`h-2 w-2 rounded-full ${form.status === 'open'? 'bg-[#6aaf8f]' : 'bg-[#b3a9bc]'}`} />
-                  {/* Yaha pe Title ka floating label logic */}
-                  <div className="relative">
-                    {form.platform? (
-                      <span className="ps-mono text-[9px] text-[#8e819c]">{form.platform}</span>
-                    ) : (
-                      <span className="ps-mono text-[9px] text-[#c4b8d0]">• MNET PLUS</span>
-                    )}
-                  </div>
-                </div>
-                <div className="relative mt-3 min-h-[22px]">
-                  {!form.title &&!isFocused && (
-                    <span className="absolute text-[15px] text-[#b8adc6] pointer-events-none">Title</span>
-                  )}
-                  {form.title && (
-                    <h2 className="text-[16px] font-semibold text-[#3d324b]">{form.title}</h2>
-                  )}
-                  {isFocused &&!form.title && (
-                    <span className="ps-mono text-[9px] text-[#8e819c] absolute -top-3 left-0">TITLE - Left me chala gaya</span>
-                  )}
-                </div>
-              </div>
+          <p className="ps-mono text-[9px] text-[#8068a9] mt-6 mb-2">PREVIEW</p>
+          <article className="ps-panel rounded-2xl p-5 border border-[#e0d4ed] bg-white">
+            <div className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${form.status === 'open'? 'bg-[#6aaf8f]' : 'bg-[#b3a9bc]'}`} />
+              <span className="ps-mono text-[9px] text-[#8e819c]">{form.platform}</span>
             </div>
-            <div className="mt-7 flex items-end justify-between">
-              <div>
-                <p className="ps-mono text-[9px] text-[#95899d]">STATUS</p>
-                <p className={`mt-1 text-[12px] font-medium ${form.status === 'open'? 'text-[#6b9c7e]' : 'text-[#8f8495]'}`}>{form.closes}</p>
-              </div>
-              <p className="font-mono text-[18px] text-[#4f3a70]">{form.progress}%</p>
-            </div>
-            <div className="mt-3 h-1.5 rounded-full bg-[#eeeaf3]">
-              <div className="h-full rounded-full bg-[#9b79c7]" style={{ width: `${form.progress}%` }} />
+            <h2 className="mt-3 text-[16px] font-semibold text-[#3d324b]">{form.title || 'Title'}</h2>
+            <div className="mt-6">
+              <p className="ps-mono text-[9px] text-[#95899d]">STATUS</p>
+              <p className="mt-1 text-[12px] font-medium text-[#6b9c7e]">{liveClosesTwo}</p>
+              <p className="mt-1 text-[10px] text-[#8e819c]">Top box preview: {liveClosesFour}</p>
             </div>
             <div className="mt-4 flex items-center justify-between gap-3">
               <span className="text-[11px] text-[#958a9c]">{form.note}</span>
-              <button type="button" className="flex items-center gap-1.5 rounded-lg bg-[#60438f] px-3 py-2 text-[11px] font-semibold text-white">
-                Open official page
-              </button>
+              <span className="rounded-lg bg-[#60438f] px-3 py-2 text-[11px] font-semibold text-white">Open official page</span>
             </div>
           </article>
 
-          {/* FORM - Title gayab hone wala logic */}
-          <div className="mt-6 space-y-3">
-            <div className="relative border border-[#e0d4ed] rounded-xl bg-white">
-              <label className={`absolute left-3 transition-all ${isFocused || form.title? 'top-1 text-[9px] text-[#8068a9] ps-mono' : 'top-3.5 text-[13px] text-[#aaa]'}`}>Title - Yaha likh, upar Title gayab hoga</label>
-              <input value={form.title} onFocus={()=>setIsFocused(true)} onBlur={()=>setIsFocused(false)} onChange={e=>setForm({...form, title: e.target.value})} className="w-full p-3 pt-6 rounded-xl text-[14px] outline-none" />
+          {items.length > 0 && (
+            <div className="mt-8">
+              <p className="ps-mono text-[9px] text-[#8068a9] mb-3">PUBLISHED - {items.length}</p>
+              <div className="space-y-3">
+                {items.map(it => (
+                  <div key={it.id} className="flex items-center gap-3 border border-[#e0d4ed] rounded-xl p-3 bg-white">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium truncate">{it.title}</p>
+                      <p className="text-[10px] text-[#8e819c] truncate">{it.platform} • {formatTwoUnits(it.closeDate, it.closes)}</p>
+                    </div>
+                    <button onClick={() => deleteItem(it.id)} className="h-8 w-8 rounded-full bg-[#ffe5e5] text-[#ff4d4f] flex items-center justify-center hover:bg-[#ffd0d0]">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
+          )}
 
-            <input placeholder="Platform - MNET PLUS" value={form.platform} onChange={e=>setForm({...form, platform: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl" />
-            <input placeholder="Description - Daily votes available ki jagah" value={form.description} onChange={e=>setForm({...form, description: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl" />
-
-            <div className="grid grid-cols-2 gap-3">
-              <select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl bg-white">
-                <option value="open">open</option>
-                <option value="ended">ended</option>
-              </select>
-              <input placeholder="Closes in 18h 42m" value={form.closes} onChange={e=>setForm({...form, closes: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl" />
-            </div>
-
-            <div>
-              <label className="ps-mono text-[9px] text-[#8068a9]">VOTING % - Tu khud set karegi, API nahi milta isliye manual</label>
-              <input type="range" min="0" max="100" value={form.progress} onChange={e=>setForm({...form, progress: e.target.value})} className="w-full" />
-              <p className="font-mono text-[13px] text-[#60438f]">{form.progress}% progress bar</p>
-            </div>
-
-            <select value={form.voteType} onChange={e=>setForm({...form, voteType: e.target.value})} className="w-full border p-3 rounded-xl bg-white">
-              <option value="app">App Voting - App kholega, nahi hai to Store pe le jayega</option>
-              <option value="website">Website Voting - Direct website kholega</option>
+          <div className="mt-8 space-y-3">
+            <input value={form.title} onChange={e=>setForm({...form, title: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" placeholder="Title" />
+            <input value={form.platform} onChange={e=>setForm({...form, platform: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" placeholder="Platform - MNET PLUS" />
+            <select value={form.status} onChange={e=>setForm({...form, status: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl bg-white text-[13px]">
+              <option value="open">Open</option>
+              <option value="upcoming">Upcoming - Opens 26 Jun</option>
+              <option value="ended">Ended</option>
             </select>
 
-            <input placeholder="Main Link - https://mnetplus.world/..." value={form.webLink} onChange={e=>setForm({...form, webLink: e.target.value})} className="w-full border p-3 rounded-xl" />
-            <input placeholder="Play Store - https://play.google.com/..." value={form.playStoreLink} onChange={e=>setForm({...form, playStoreLink: e.target.value})} className="w-full border p-3 rounded-xl" />
-            <input placeholder="App Store - https://apps.apple.com/..." value={form.appStoreLink} onChange={e=>setForm({...form, appStoreLink: e.target.value})} className="w-full border p-3 rounded-xl" />
+            <div className="border border-[#e0d4ed] rounded-xl p-3 bg-[#fdfaff]">
+              <label className="ps-mono text-[9px] text-[#8068a9]">CLOSE DATE</label>
+              <input type="datetime-local" value={form.closeDate} onChange={e=>setForm({...form, closeDate: e.target.value})} className="w-full mt-2 border border-[#e0d4ed] p-2.5 rounded-lg text-[13px]" />
+              <p className="text-[10px] text-[#8e819c] mt-1.5">Example: 27 Jan 2026, 23:59. Card shows: {liveClosesTwo}. Top purple box shows: {liveClosesFour}</p>
+            </div>
+
+            <input value={form.description} onChange={e=>setForm({...form, description: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" placeholder="Description - shown on expand" />
+            <input value={form.note} onChange={e=>setForm({...form, note: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" placeholder="Short note" />
+
+            <select value={form.voteType} onChange={e=>setForm({...form, voteType: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl bg-white text-[13px]">
+              <option value="app">App Voting</option>
+              <option value="website">Website Voting</option>
+            </select>
+
+            <input placeholder="Voting Link" value={form.webLink} onChange={e=>setForm({...form, webLink: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" />
+            <input placeholder="Play Store Link (optional)" value={form.playStoreLink} onChange={e=>setForm({...form, playStoreLink: e.target.value})} className="w-full border border-[#e0d4ed] p-3 rounded-xl text-[13px] outline-none focus:border-[#60438f]" />
           </div>
         </>
       )}
 
-      <button onClick={save} className="w-full bg-[#60438f] text-white p-3 rounded-xl mt-6">Publish - No Code Edit Needed</button>
+      <button onClick={save} className="w-full bg-[#60438f] text-white p-3 rounded-xl mt-6 font-medium text-[13px]">Publish</button>
     </div>
   );
 }
