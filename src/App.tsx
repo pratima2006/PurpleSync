@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Achievements } from './app/Achievements';
-import { Home } from './app/Home';
-import { Links } from './app/Links';
-import { Members } from './app/Members';
-import { Schedule } from './app/Schedule';
-import { Updates } from './app/Updates';
-import { Voting } from './app/Voting';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import { MobileNav } from './components/MobileNav';
-import { SearchPanel } from './components/SearchPanel';
-import { Sidebar } from './components/Sidebar';
-import { Topbar } from './components/Topbar';
-import type { PageKey } from './components/types';
-import { Admin } from '../Admin';
+import { Achievements } from '../app/Achievements';
+import { Home } from '../app/Home';
+import { Links } from '../app/Links';
+import { Members } from '../app/Members';
+import { Schedule } from '../app/Schedule';
+import { Updates } from '../app/Updates';
+import { Voting } from '../app/Voting';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { MobileNav } from '../components/MobileNav';
+import { SearchPanel } from '../components/SearchPanel';
+import { Sidebar } from '../components/Sidebar';
+import { Topbar } from '../components/Topbar';
+import type { PageKey } from '../components/types';
+import { Admin } from '../app/Admin';
 
 const validPages: PageKey[] = [
   'home',
@@ -39,13 +39,10 @@ function Shell() {
   useEffect(() => {
     const handlePopState = () => setPage(pageFromPath(window.location.pathname));
     window.addEventListener('popstate', handlePopState);
-
-    // Secret admin access via?admin=true
     const params = new URLSearchParams(window.location.search);
     if (params.get('admin') === 'true') {
       setPage('admin');
     }
-
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
@@ -77,28 +74,13 @@ function Shell() {
 
   return (
     <div className="ps-shell">
-      <Sidebar
-        page={page}
-        mobileOpen={mobileMenuOpen}
-        onNavigate={navigate}
-        onClose={() => setMobileMenuOpen(false)}
-      />
+      <Sidebar page={page} mobileOpen={mobileMenuOpen} onNavigate={navigate} onClose={() => setMobileMenuOpen(false)} />
       <main className="ps-main ml-0 md:ml-[258px]">
-        <Topbar
-          page={page}
-          onNavigate={navigate}
-          onSearch={() => setSearchOpen(true)}
-          onMenu={() => setMobileMenuOpen(true)}
-        />
+        <Topbar page={page} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />
         {content}
       </main>
       <MobileNav page={page} onNavigate={navigate} />
-      {searchOpen && (
-        <SearchPanel
-          onClose={() => setSearchOpen(false)}
-          onNavigate={navigate}
-        />
-      )}
+      {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onNavigate={navigate} />}
     </div>
   );
 }
