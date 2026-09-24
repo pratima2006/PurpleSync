@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Plus } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, addDoc, deleteDoc, doc, onSnapshot } from 'firebase/firestore';
 
 const PASSWORD = "borahae13";
 
 type AdminItem = {
-  id: number;
+  id: string;
   title: string;
   platform: string;
   closes: string;
@@ -70,46 +72,76 @@ export function Admin() {
     return () => clearInterval(t);
   }, []);
 
+  // FIREBASE LIVE LOAD
   useEffect(() => {
     if (!auth) return;
-    const old = JSON.parse(localStorage.getItem(`ps_admin_${type}`) || '[]');
-    setItems(old);
+    if (type !== 'votingItems') {
+      const old = JSON.parse(localStorage.getItem(`ps_admin_${type}`) || '[]');
+      setItems(old as any);
+      return;
+    }
+    const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminItem));
+      setItems(list);
+    });
+    return () => unsub();
   }, [auth, type]);
 
   const liveClosesTwo = useMemo(() => formatTwoUnits(form.closeDate, undefined), [form.closeDate, tick]);
   const liveClosesFour = useMemo(() => formatFourUnits(form.closeDate, undefined), [form.closeDate, tick]);
 
-  const save = () => {
+  const save = async () => {
     if (!form.title.trim()) return alert('Title is required');
     if (!form.webLink.trim()) return alert('Voting link is required');
     if (!form.closeDate) return alert('Please select close date');
-    const key = `ps_admin_${type}`;
-    const old = JSON.parse(localStorage.getItem(key) || '[]');
-    const newItem: AdminItem = {
-      id: Date.now(),
-      title: form.title.trim(),
-      platform: form.platform || 'MNET PLUS',
-      closes: formatTwoUnits(form.closeDate),
-      closeDate: form.closeDate,
-      note: form.note,
-      description: form.description,
-      status: form.status,
-      voteType: form.voteType,
-      webLink: form.webLink.trim(),
-      playStoreLink: form.playStoreLink.trim(),
-    };
-    const updated = [newItem,...old];
-    localStorage.setItem(key, JSON.stringify(updated));
-    setItems(updated);
-    setForm({...form, title: '', webLink: '', closeDate: '' });
+    
+    if (type !== 'votingItems') {
+      const key = `ps_admin_${type}`;
+      const old = JSON.parse(localStorage.getItem(key) || '[]');
+      const newItem = { id: Date.now(),...form, closes: formatTwoUnits(form.closeDate) };
+      const updated = [newItem,...old];
+      localStorage.setItem(key, JSON.stringify(updated));
+      setItems(updated as any);
+      setForm({...form, title: '', webLink: '', closeDate: '' });
+      return;
+    }
+
+    // FIREBASE SAVE
+    try {
+      await addDoc(collection(db, "votingItems"), {
+        title: form.title.trim(),
+        platform: form.platform || 'MNET PLUS',
+        closes: formatTwoUnits(form.closeDate),
+        closeDate: form.closeDate,
+        note: form.note,
+        description: form.description,
+        status: form.status,
+        voteType: form.voteType,
+        webLink: form.webLink.trim(),
+        playStoreLink: form.playStoreLink.trim(),
+        createdAt: new Date().toISOString(),
+      });
+      setForm({...form, title: '', webLink: '', closeDate: '' });
+      alert('Published to Firebase! Sabke phone me live ho gaya 🔥');
+    } catch (e: any) {
+      alert('Firebase error: ' + e.message);
+    }
   };
 
-  const deleteItem = (id: number) => {
+  const deleteItem = async (id: string) => {
     if (!confirm('Delete this entry?')) return;
-    const key = `ps_admin_${type}`;
-    const updated = items.filter(i => i.id!== id);
-    localStorage.setItem(key, JSON.stringify(updated));
-    setItems(updated);
+    if (type !== 'votingItems') {
+      const key = `ps_admin_${type}`;
+      const updated = items.filter((i: any) => i.id !== id);
+      localStorage.setItem(key, JSON.stringify(updated));
+      setItems(updated as any);
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "votingItems", id));
+    } catch (e: any) {
+      alert('Delete error: ' + e.message);
+    }
   };
 
   const resetForm = () => {
@@ -166,7 +198,7 @@ export function Admin() {
 
           {items.length > 0 && (
             <div className="mt-8">
-              <p className="ps-mono text-[9px] text-[#8068a9] mb-3">PUBLISHED - {items.length}</p>
+              <p className="ps-mono text-[9px] text-[#8068a9] mb-3">PUBLISHED - {items.length} (Firebase Live)</p>
               <div className="space-y-3">
                 {items.map(it => (
                   <div key={it.id} className="flex items-center gap-3 border border-[#e0d4ed] rounded-xl p-3 bg-white">
@@ -174,7 +206,7 @@ export function Admin() {
                       <p className="text-[13px] font-medium truncate">{it.title}</p>
                       <p className="text-[10px] text-[#8e819c] truncate">{it.platform} • {formatTwoUnits(it.closeDate, it.closes)}</p>
                     </div>
-                    <button onClick={() => deleteItem(it.id)} className="h-8 w-8 rounded-full bg-[#ffe5e5] text-[#ff4d4f] flex items-center justify-center hover:bg-[#ffd0d0]">
+                    <button onClick={() => deleteItem(it.id as any)} className="h-8 w-8 rounded-full bg-[#ffe5e5] text-[#ff4d4f] flex items-center justify-center hover:bg-[#ffd0d0]">
                       <X size={14} />
                     </button>
                   </div>
