@@ -1,18 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Achievements } from '../app/Achievements';
-import { Home } from '../app/Home';
-import { Links } from '../app/Links';
-import { Members } from '../app/Members';
-import { Schedule } from '../app/Schedule';
-import { Updates } from '../app/Updates';
-import { Voting } from '../app/Voting';
-import { ErrorBoundary } from '../components/ErrorBoundary';
-import { MobileNav } from '../components/MobileNav';
-import { SearchPanel } from '../components/SearchPanel';
-import { Sidebar } from '../components/Sidebar';
-import { Topbar } from '../components/Topbar';
-import type { PageKey } from '../components/types';
-import { Admin } from './src/Admin';
+import { Achievements } from './app/Achievements';
+import { Home } from './app/Home';
+import { Links } from './app/Links';
+import { Members } from './app/Members';
+import { Schedule } from './app/Schedule';
+import { Updates } from './app/Updates';
+import { Voting } from './app/Voting';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { MobileNav } from './components/MobileNav';
+import { SearchPanel } from './components/SearchPanel';
+import { Sidebar } from './components/Sidebar';
+import { Topbar } from './components/Topbar';
+import type { PageKey } from './components/types';
+import { Admin } from '../Admin';
 
 const validPages: PageKey[] = [
   'home',
