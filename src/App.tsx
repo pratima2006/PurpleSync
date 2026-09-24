@@ -12,6 +12,9 @@ import { SearchPanel } from '../components/SearchPanel';
 import { Topbar } from '../components/Topbar';
 import type { PageKey } from '../components/types';
 import { Admin } from '../app/Admin';
+import { Settings } from '../app/Settings';
+import { FAQ } from '../app/FAQ';
+import { Help } from '../app/Help';
 
 const validPages: PageKey[] = [
   'home',
@@ -22,6 +25,9 @@ const validPages: PageKey[] = [
   'links',
   'members',
   'admin',
+  'settings',
+  'faq',
+  'help',
 ];
 
 function pageFromPath(pathname: string): PageKey {
@@ -62,6 +68,9 @@ function Shell() {
     if (page === 'links') return <Links />;
     if (page === 'members') return <Members />;
     if (page === 'admin') return <Admin />;
+    if (page === 'settings') return <Settings />;
+    if (page === 'faq') return <FAQ />;
+    if (page === 'help') return <Help />;
     return (
       <Home
         onNavigate={navigate}
