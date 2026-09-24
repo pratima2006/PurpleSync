@@ -12,7 +12,7 @@ import { SearchPanel } from '../components/SearchPanel';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import type { PageKey } from '../components/types';
-import { Admin } from './pages/Admin';
+import { Admin } from './src/Admin';
 
 const validPages: PageKey[] = [
   'home',
