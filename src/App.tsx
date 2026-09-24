@@ -12,6 +12,7 @@ import { SearchPanel } from '../components/SearchPanel';
 import { Sidebar } from '../components/Sidebar';
 import { Topbar } from '../components/Topbar';
 import type { PageKey } from '../components/types';
+import { Admin } from './pages/Admin';
 
 const validPages: PageKey[] = [
   'home',
@@ -56,6 +57,7 @@ function Shell() {
     if (page === 'updates') return <Updates />;
     if (page === 'links') return <Links />;
     if (page === 'members') return <Members />;
+    if {page === 'admin' && <Admin />}
     return (
       <Home
         onNavigate={navigate}
