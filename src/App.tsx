@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Achievements } from '../app/Achievements';
-import { Home } from '../app/Home';
+import Home from '../app/Home';
 import { Links } from '../app/Links';
 import { Members } from '../app/Members';
 import { Schedule } from '../app/Schedule';
