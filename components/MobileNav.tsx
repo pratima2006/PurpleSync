@@ -17,7 +17,7 @@ export function MobileNav({ page, onNavigate }: MobileNavProps) {
     <>
       {/* MOBILE - Bottom Pill Glass - Same as 1st pic */}
       <nav
-        className="fixed inset-x-0 bottom-5 z-40 mx-auto flex h-[64px] max-w-[92%] items-center justify-around rounded-full border border-white/60 bg-[#fdfcff]/75 px-2 shadow-[0_8px_32px_rgba(96,67,143,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl backdrop-saturate-[1.8] md:hidden"
+        className="fixed inset-x-0 bottom-5 z-40 mx-auto flex h-[64px] max-w-[92%] items-center justify-around rounded-full border border-white/60 bg-[#fdfcff]/75 px-2 shadow-xl backdrop-blur-xl md:hidden"
         aria-label="Mobile navigation"
       >
         {mobileItems.map(({ key, label, icon: Icon }) => (
@@ -38,7 +38,7 @@ export function MobileNav({ page, onNavigate }: MobileNavProps) {
 
       {/* LAPTOP - Side Expand Glass Pill */}
       <nav
-        className="hidden md:group fixed left-5 top-5 bottom-5 z-40 md:flex w-[78px] hover:w-[220px] flex-col justify-between rounded-[28px] border border-white/60 bg-[#fdfcff]/70 py-6 shadow-[0_8px_32px_rgba(96,67,143,0.12),inset_0_1px_1px_rgba(255,255,255,0.8)] backdrop-blur-xl backdrop-saturate-[1.8] transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] overflow-hidden"
+        className="hidden md:flex group fixed left-5 top-5 bottom-5 z-40 w-[78px] hover:w-[220px] flex-col justify-between rounded-[28px] border border-white/60 bg-[#fdfcff]/70 py-6 shadow-xl backdrop-blur-xl transition-all duration-300 ease-out overflow-hidden"
         aria-label="Desktop navigation"
       >
         <div className="flex flex-col gap-1 px-2">
