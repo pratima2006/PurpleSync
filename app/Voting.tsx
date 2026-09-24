@@ -58,21 +58,45 @@ export function Voting() {
   const [allItems, setAllItems] = useState<VotingItem[]>(defaultVotingItems);
   const [tick, setTick] = useState(0);
 
+  const loadItems = () => {
+    const admin = JSON.parse(localStorage.getItem('ps_admin_votingItems') || '[]');
+    if (admin.length > 0) {
+      setAllItems([...admin,...defaultVotingItems]);
+    } else {
+      setAllItems(defaultVotingItems);
+    }
+  };
+
   useEffect(() => {
-    const load = () => {
-      const admin = JSON.parse(localStorage.getItem('ps_admin_votingItems') || '[]');
-      if (admin.length > 0) {
-        setAllItems([...admin,...defaultVotingItems]);
-      } else {
-        setAllItems(defaultVotingItems);
-      }
-    };
-    load();
+    loadItems();
     const t = setInterval(() => setTick(v => v + 1), 1000);
-    return () => clearInterval(t);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'ps_admin_votingItems') loadItems();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadItems();
+    };
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
-  const filtered = allItems.filter(
+  const sortedItems = useMemo(() => {
+    return [...allItems].sort((a: any, b: any) => {
+      const ta = getTargetTime(a);
+      const tb = getTargetTime(b);
+      if (ta && tb) return ta - tb;
+      if (ta &&!tb) return -1;
+      if (!ta && tb) return 1;
+      return 0;
+    });
+  }, [allItems, tick]);
+
+  const filtered = sortedItems.filter(
     (item) => filter === 'all' || item.status === filter,
   );
 
@@ -174,16 +198,16 @@ export function Voting() {
             onClick={() => setFilter(item)}
             className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${
               filter === item
-             ? 'border-[#60438f] bg-[#60438f] text-white'
+            ? 'border-[#60438f] bg-[#60438f] text-white'
                 : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'
             }`}
           >
             {item === 'all'
-           ? 'All Windows'
+          ? 'All Windows'
               : item === 'open'
-             ? 'Open Now'
+            ? 'Open Now'
                 : item === 'ended'
-               ? 'Recently Ended'
+              ? 'Recently Ended'
                   : 'Upcoming'}
           </button>
         ))}
@@ -204,9 +228,9 @@ export function Voting() {
                     <span
                       className={`h-2 w-2 rounded-full ${
                         item.status === 'open'
-                       ? 'bg-[#6aaf8f]'
+                      ? 'bg-[#6aaf8f]'
                           : item.status === 'ended'
-                         ? 'bg-[#b3a9bc]'
+                        ? 'bg-[#b3a9bc]'
                             : 'bg-[#c3a968]'
                       }`}
                     />
@@ -224,13 +248,13 @@ export function Voting() {
                     e.stopPropagation();
                     setReady((current) =>
                       current.includes(item.id)
-                     ? current.filter((id) => id!== item.id)
+                    ? current.filter((id) => id!== item.id)
                         : [...current, item.id],
                     );
                   }}
                   className={`rounded-lg border p-2 ${
                     ready.includes(item.id)
-                   ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
+                  ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
                       : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'
                   }`}
                 >
@@ -238,23 +262,17 @@ export function Voting() {
                 </button>
               </div>
 
-              <div className="mt-7 flex items-end justify-between">
-                <div>
-                  <p className="ps-mono text-[9px] text-[#95899d]">STATUS</p>
-                  <p className={`mt-1 text-[12px] font-medium ${item.status === 'open'? 'text-[#6b9c7e]' : 'text-[#8f8495]'}`}>
-                    {formatTwoUnits(item)}
-                  </p>
-                </div>
-                <p className="font-mono text-[18px] text-[#4f3a70]">{item.progress}%</p>
-              </div>
-              <div className="mt-3 h-1.5 rounded-full bg-[#eeeaf3]">
-                <div className={`h-full rounded-full ${item.status === 'ended'? 'bg-[#bdb4c7]' : 'bg-[#9b79c7]'}`} style={{ width: `${item.progress}%` }} />
+              <div className="mt-7">
+                <p className="ps-mono text-[9px] text-[#95899d]">STATUS</p>
+                <p className={`mt-1 text-[13px] font-medium ${item.status === 'open'? 'text-[#6b9c7e]' : 'text-[#8f8495]'}`}>
+                  {formatTwoUnits(item)}
+                </p>
               </div>
 
               {isExpanded && (
-                <div className="mt-4 rounded-xl bg-[#f6f1fb] border border-[#ede4f7] p-3">
-                  <p className="ps-mono text-[8px] text-[#8068a9]">DESCRIPTION - Daily votes available</p>
-                  <p className="mt-2 text-[12px] leading-5 text-[#5a4a6b]">{item.description || item.note || 'Vote daily on official app. Extra votes available.'}</p>
+                <div className="mt-4 rounded-[16px] bg-[#f6f0fd] border border-[#e9dff6] p-4">
+                  <p className="ps-mono text-[10px] tracking-[0.12em] text-[#9a8aac]">DESCRIPTION - DAILY VOTES AVAILABLE</p>
+                  <p className="mt-3 text-[13px] leading-6 text-[#4e415f]">{item.description || item.note || 'Daily votes available. Vote daily at 10PM IST for 20x votes pr account.'}</p>
                 </div>
               )}
 
@@ -263,10 +281,10 @@ export function Voting() {
                 <button
                   type="button"
                   onClick={(e) => handleOpen(item, e)}
-                  disabled={item.status!== 'open'}
-                  className="flex items-center gap-1.5 rounded-lg bg-[#60438f] px-3 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#ddd7e4] disabled:text-[#918797]"
+                  disabled={item.status!== 'open' && item.status!== 'upcoming'}
+                  className="flex items-center gap-1.5 rounded-full bg-[#60438f] px-4 py-2 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-[#ddd7e4] disabled:text-[#918797]"
                 >
-                  Open official page <ExternalLink size={13} />
+                  Open official page <ExternalLink size={14} />
                 </button>
               </div>
             </article>
