@@ -22,11 +22,12 @@ const validPages: PageKey[] = [
   'updates',
   'links',
   'members',
+  'admin',
 ];
 
 function pageFromPath(pathname: string): PageKey {
   const value = pathname.replace(/^\/+/, '').split('/')[0] as PageKey;
-  return validPages.includes(value) ? value : 'home';
+  return validPages.includes(value)? value : 'home';
 }
 
 function Shell() {
@@ -38,11 +39,18 @@ function Shell() {
   useEffect(() => {
     const handlePopState = () => setPage(pageFromPath(window.location.pathname));
     window.addEventListener('popstate', handlePopState);
+
+    // Secret admin access via?admin=true
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true') {
+      setPage('admin');
+    }
+
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const navigate = (nextPage: PageKey) => {
-    const nextPath = nextPage === 'home' ? '/' : `/${nextPage}`;
+    const nextPath = nextPage === 'home'? '/' : `/${nextPage}`;
     window.history.pushState({}, '', nextPath);
     setPage(nextPage);
     setMobileMenuOpen(false);
@@ -57,7 +65,7 @@ function Shell() {
     if (page === 'updates') return <Updates />;
     if (page === 'links') return <Links />;
     if (page === 'members') return <Members />;
-    if {page === 'admin' && <Admin />}
+    if (page === 'admin') return <Admin />;
     return (
       <Home
         onNavigate={navigate}
