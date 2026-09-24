@@ -11,6 +11,8 @@ import { MetricCard } from '../components/MetricCard';
 import { SectionHeading } from '../components/SectionHeading';
 import type { PageKey } from '../components/types';
 import { useEffect, useState, useMemo } from 'react';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 type HomeProps = {
   onNavigate: (page: PageKey) => void;
@@ -61,22 +63,22 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    const load = () => {
-      const admin = JSON.parse(localStorage.getItem('ps_admin_votingItems') || '[]');
-      const defaults = (dataModule as any).votingItems || votingDesks;
-      if (admin.length > 0) setAllVotingItems([...admin,...defaults]);
-      else setAllVotingItems(defaults);
-    };
-    load();
     const t = setInterval(() => setTick(v => v + 1), 1000);
-    const onStorage = (e: StorageEvent) => { if (e.key === 'ps_admin_votingItems') load(); };
-    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
-    window.addEventListener('storage', onStorage);
-    document.addEventListener('visibilitychange', onVisible);
+
+    // FIREBASE LIVE LISTENER - localStorage hataya
+    const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
+      const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any));
+      const defaults = (dataModule as any).votingItems || votingDesks;
+      if (firestoreItems.length > 0) {
+        setAllVotingItems([...firestoreItems,...defaults]);
+      } else {
+        setAllVotingItems(defaults);
+      }
+    });
+
     return () => {
       clearInterval(t);
-      window.removeEventListener('storage', onStorage);
-      document.removeEventListener('visibilitychange', onVisible);
+      unsub();
     };
   }, []);
 
@@ -192,9 +194,9 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
                 <div
                   className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                     item.accent === 'gold'
-                    ? 'bg-[#f5ead1] text-[#96733a]'
+                   ? 'bg-[#f5ead1] text-[#96733a]'
                       : item.accent === 'blue'
-                      ? 'bg-[#e3ebf3] text-[#5c7791]'
+                     ? 'bg-[#e3ebf3] text-[#5c7791]'
                         : 'bg-[#eee5f7] text-[#77599f]'
                   }`}
                 >
