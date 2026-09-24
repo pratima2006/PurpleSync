@@ -49,6 +49,14 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
   const votingDesks: any[] = (dataModule as any).votingDesks || (dataModule as any).votings || (dataModule as any).voting || [];
   const scheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
 
+  const liveVotingCount = votingDesks.length > 0? votingDesks.length.toString().padStart(2, '0') : "02";
+  const nextSchedule = scheduleItems[0];
+  const thisMonthValue = updates.length > 0? updates.length.toString().padStart(2, '0') : "08";
+  const archiveCount = achievements.length > 0? achievements.length.toString() : "147";
+  const recentUpdates = updates.slice(0, 3);
+  const calendarEvent = nextSchedule;
+  const latestArchive = achievements[0];
+
   const [allVotingItems, setAllVotingItems] = useState<any[]>(votingDesks);
   const [tick, setTick] = useState(0);
 
@@ -80,13 +88,6 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
     }
     return allVotingItems.find((i: any) => i.status === 'open') || allVotingItems[0];
   }, [allVotingItems, tick]);
-
-  const nextSchedule = scheduleItems[0];
-  const thisMonthValue = updates.length > 0? updates.length.toString().padStart(2, '0') : "08";
-  const archiveCount = achievements.length > 0? achievements.length.toString() : "147";
-  const recentUpdates = updates.slice(0, 3);
-  const calendarEvent = nextSchedule;
-  const latestArchive = achievements[0];
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
@@ -125,9 +126,9 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
 
       <div className="ps-stagger mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="NEXT CLOSES IN"
-          value={closestVoting? formatFourUnits(closestVoting) : "02"}
-          detail={closestVoting? `${closestVoting.title} · ${closestVoting.platform}` : "windows need your attention"}
+          label="LIVE VOTING"
+          value={closestVoting? formatFourUnits(closestVoting) : liveVotingCount}
+          detail="windows need your attention"
         />
         <MetricCard
           label="NEXT UP"
@@ -191,9 +192,9 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
                 <div
                   className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                     item.accent === 'gold'
-                ? 'bg-[#f5ead1] text-[#96733a]'
+                    ? 'bg-[#f5ead1] text-[#96733a]'
                       : item.accent === 'blue'
-                  ? 'bg-[#e3ebf3] text-[#5c7791]'
+                      ? 'bg-[#e3ebf3] text-[#5c7791]'
                         : 'bg-[#eee5f7] text-[#77599f]'
                   }`}
                 >
