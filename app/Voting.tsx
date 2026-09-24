@@ -174,8 +174,8 @@ export function Voting() {
             onClick={() => setFilter(item)}
             className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${
               filter === item
-             ? 'border-[#60438f] bg-[#60438f] text-white shadow-sm'
-                : 'border-[#e3d9ee] bg-white text-[#6f6380] hover:border-[#c5b3e0] hover:text-[#60438f]'
+             ? 'border-[#60438f] bg-[#60438f] text-white'
+                : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'
             }`}
           >
             {item === 'all'
