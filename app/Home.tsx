@@ -10,6 +10,7 @@ import * as dataModule from '../components/data';
 import { MetricCard } from '../components/MetricCard';
 import { SectionHeading } from '../components/SectionHeading';
 import type { PageKey } from '../components/types';
+import { useEffect, useState, useMemo } from 'react';
 
 type HomeProps = {
   onNavigate: (page: PageKey) => void;
@@ -17,37 +18,78 @@ type HomeProps = {
   onDismiss: () => void;
 };
 
+function getTargetTime(item: any): number | null {
+  if (item?.closeDate) {
+    const t = new Date(item.closeDate).getTime();
+    if (!isNaN(t)) return t;
+  }
+  return null;
+}
+
+function formatFourUnits(item: any) {
+  const target = getTargetTime(item);
+  if (!target) return item?.closes || '--';
+  const diff = target - Date.now();
+  if (diff <= 0) return 'Closed';
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const m = Math.floor((diff / (1000 * 60)) % 60);
+  const s = Math.floor((diff / 1000) % 60);
+  const parts = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0 || d > 0) parts.push(`${h}h`);
+  if (m > 0 || h > 0 || d > 0) parts.push(`${m}m`);
+  parts.push(`${s}s`);
+  return parts.join(' ');
+}
+
 export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
-  // Live data - data.ts se
   const updates: any[] = (dataModule as any).updates || [];
   const achievements: any[] = (dataModule as any).achievements || (dataModule as any).archive || [];
   const votingDesks: any[] = (dataModule as any).votingDesks || (dataModule as any).votings || (dataModule as any).voting || [];
   const scheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
 
-  // 1. Voting box - main imp voting
-  const liveVotingCount = votingDesks.length > 0? votingDesks.length.toString().padStart(2, '0') : "02";
+  const [allVotingItems, setAllVotingItems] = useState<any[]>(votingDesks);
+  const [tick, setTick] = useState(0);
 
-  // 2. Next Up box - schedule page se sabse nazdeek wala
+  useEffect(() => {
+    const load = () => {
+      const admin = JSON.parse(localStorage.getItem('ps_admin_votingItems') || '[]');
+      const defaults = (dataModule as any).votingItems || votingDesks;
+      if (admin.length > 0) setAllVotingItems([...admin,...defaults]);
+      else setAllVotingItems(defaults);
+    };
+    load();
+    const t = setInterval(() => setTick(v => v + 1), 1000);
+    const onStorage = (e: StorageEvent) => { if (e.key === 'ps_admin_votingItems') load(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, []);
+
+  const closestVoting = useMemo(() => {
+    const openWithDate = allVotingItems.filter((i: any) => i.status === 'open' && getTargetTime(i));
+    if (openWithDate.length > 0) {
+      openWithDate.sort((a: any, b: any) => (getTargetTime(a) || 0) - (getTargetTime(b) || 0));
+      return openWithDate[0];
+    }
+    return allVotingItems.find((i: any) => i.status === 'open') || allVotingItems[0];
+  }, [allVotingItems, tick]);
+
   const nextSchedule = scheduleItems[0];
-
-  // 3. This month - updates ka count
   const thisMonthValue = updates.length > 0? updates.length.toString().padStart(2, '0') : "08";
-
-  // 4. On Record - achievements ka total count
   const archiveCount = achievements.length > 0? achievements.length.toString() : "147";
-
-  // Recent 3 - updates page ke 'All' se
   const recentUpdates = updates.slice(0, 3);
-
-  // Calendar box - schedule ka first item
   const calendarEvent = nextSchedule;
-
-  // Last wala On Record box - achievements ka first item
   const latestArchive = achievements[0];
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
-      {/* 1. HERO BOX - NO CHANGE - Jaise tha waise hi */}
       <section className="ps-hero-glow ps-paper-grid relative overflow-hidden rounded-[26px] border border-[#e0d8ed] bg-[#f5f0fb] px-6 py-8 md:px-10 md:py-11">
         <div className="relative max-w-[650px]">
           <div className="flex items-center gap-2 text-[#8068a9]">
@@ -81,13 +123,11 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         </div>
       </section>
 
-      {/* 2. 4 WHITE BOXES - AB LIVE */}
       <div className="ps-stagger mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="LIVE VOTING"
-          value={liveVotingCount}
-          detail="windows need your attention"
-          tone="purple"
+          label="NEXT CLOSES IN"
+          value={closestVoting? formatFourUnits(closestVoting) : "02"}
+          detail={closestVoting? `${closestVoting.title} · ${closestVoting.platform}` : "windows need your attention"}
         />
         <MetricCard
           label="NEXT UP"
@@ -126,7 +166,6 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
       )}
 
       <div className="mt-12 grid gap-10 lg:grid-cols-[1.16fr_.84fr]">
-        {/* 3. RECENT 3 UPDATES - All updates se */}
         <section>
           <SectionHeading
             eyebrow="RECENTLY ON THE DESK"
@@ -152,9 +191,9 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
                 <div
                   className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                     item.accent === 'gold'
-                     ? 'bg-[#f5ead1] text-[#96733a]'
+                ? 'bg-[#f5ead1] text-[#96733a]'
                       : item.accent === 'blue'
-                       ? 'bg-[#e3ebf3] text-[#5c7791]'
+                  ? 'bg-[#e3ebf3] text-[#5c7791]'
                         : 'bg-[#eee5f7] text-[#77599f]'
                   }`}
                 >
@@ -186,7 +225,6 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           </div>
         </section>
 
-        {/* 4. CALENDAR BOX - schedule page se */}
         <section>
           <SectionHeading
             eyebrow="NEXT ON THE CALENDAR"
@@ -240,7 +278,6 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         </section>
       </div>
 
-      {/* 5. ON RECORD BOX - achievements page se - AB LIVE */}
       <section className="mt-12">
         <SectionHeading
           eyebrow="A QUIET MOMENT IN THE ARCHIVE"
