@@ -73,7 +73,7 @@ function Shell() {
 
   return (
     <div className="ps-shell">
-      <main className="ps-main ml-0 md:ml-[110px]">
+      <main className="ps-main ml-0">
         <Topbar page={page} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />
         {content}
       </main>
