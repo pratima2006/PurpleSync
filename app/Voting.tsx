@@ -166,24 +166,24 @@ export function Voting() {
         </div>
       </div>
 
-      <div className="mt-10 flex gap-2 overflow-x-auto ps-scroll-hide">
+      <div className="mt-10 flex gap-3 overflow-x-auto ps-scroll-hide whitespace-nowrap pb-2 -mx-1 px-1">
         {(['all', 'open', 'ended', 'upcoming'] as const).map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setFilter(item)}
-            className={`rounded-full border px-4 py-2 text-[11px] font-medium capitalize ${
+            className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${
               filter === item
-              ? 'border-[#60438f] bg-[#60438f] text-white'
-                : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'
+             ? 'border-[#60438f] bg-[#60438f] text-white shadow-sm'
+                : 'border-[#e3d9ee] bg-white text-[#6f6380] hover:border-[#c5b3e0] hover:text-[#60438f]'
             }`}
           >
             {item === 'all'
-            ? 'All windows'
+           ? 'All Windows'
               : item === 'open'
-              ? 'Open now'
+             ? 'Open Now'
                 : item === 'ended'
-                ? 'Recently ended'
+               ? 'Recently Ended'
                   : 'Upcoming'}
           </button>
         ))}
@@ -204,9 +204,9 @@ export function Voting() {
                     <span
                       className={`h-2 w-2 rounded-full ${
                         item.status === 'open'
-                        ? 'bg-[#6aaf8f]'
+                       ? 'bg-[#6aaf8f]'
                           : item.status === 'ended'
-                          ? 'bg-[#b3a9bc]'
+                         ? 'bg-[#b3a9bc]'
                             : 'bg-[#c3a968]'
                       }`}
                     />
@@ -224,13 +224,13 @@ export function Voting() {
                     e.stopPropagation();
                     setReady((current) =>
                       current.includes(item.id)
-                      ? current.filter((id) => id!== item.id)
+                     ? current.filter((id) => id!== item.id)
                         : [...current, item.id],
                     );
                   }}
                   className={`rounded-lg border p-2 ${
                     ready.includes(item.id)
-                    ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
+                   ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
                       : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'
                   }`}
                 >
