@@ -1,8 +1,29 @@
+import { useState, useEffect } from 'react';
 import { ArrowUpRight, Check, ListFilter, Trophy } from 'lucide-react';
-import { achievementItems } from '../components/data';
+import { achievementItems as defaultAchievementItems } from '../components/data';
 import { SectionHeading } from '../components/SectionHeading';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export function Achievements() {
+  const [allItems, setAllItems] = useState(defaultAchievementItems);
+
+  // FIREBASE LIVE - ADMIN SE ADD KIYA HUA YAHAN AAYEGA
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "achievementItems"), (snap) => {
+      const fbItems = snap.docs.map(d => ({
+        id: d.id,
+       ...d.data()
+      } as any));
+      if (fbItems.length > 0) {
+        setAllItems([...fbItems,...defaultAchievementItems]);
+      } else {
+        setAllItems(defaultAchievementItems);
+      }
+    });
+    return () => unsub();
+  }, []);
+
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
       <div>
@@ -22,7 +43,7 @@ export function Achievements() {
         <div className="relative overflow-hidden rounded-2xl bg-[#60438f] p-7 text-white md:p-9">
           <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full border border-[#876bb0]" />
           <p className="relative ps-mono text-[9px] text-[#d0beea]">
-            LATEST ENTRY · 147
+            LATEST ENTRY · {allItems.length}
           </p>
           <h2 className="ps-display relative mt-8 max-w-[500px] text-[32px] leading-[1.02] md:text-[42px]">
             Three decades.
@@ -43,7 +64,7 @@ export function Achievements() {
           <p className="ps-mono text-[9px] text-[#907fa0]">THE NUMBERS</p>
           <div className="mt-7 space-y-6">
             {[
-              ['147', 'archived achievements'],
+              [String(allItems.length), 'archived achievements'],
               ['21', 'territories with a No. 1'],
               ['09', 'years of shared history'],
             ].map(([number, label]) => (
@@ -83,9 +104,9 @@ export function Achievements() {
           }
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {achievementItems.map((item) => (
+          {allItems.map((item: any) => (
             <article
-              key={item.title}
+              key={item.id || item.title}
               className="ps-panel ps-panel-hover rounded-2xl p-5"
             >
               <div className="flex items-center justify-between">
