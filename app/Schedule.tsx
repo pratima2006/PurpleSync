@@ -1,9 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CalendarDays, ChevronRight, ListFilter } from 'lucide-react';
-import { scheduleItems } from '../components/data';
+import { scheduleItems as defaultScheduleItems } from '../components/data';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export function Schedule() {
   const [view, setView] = useState<'week' | 'month'>('week');
+  const [allItems, setAllItems] = useState(defaultScheduleItems);
+
+  // FIREBASE LIVE - ADMIN SE JO ADD KAREGI WO YAHAN LIVE
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "scheduleItems"), (snap) => {
+      const fb = snap.docs.map(d => ({
+        id: d.id,
+       ...d.data()
+      } as any));
+      if (fb.length > 0) {
+        setAllItems([...fb,...defaultScheduleItems]);
+      } else {
+        setAllItems(defaultScheduleItems);
+      }
+    });
+    return () => unsub();
+  }, []);
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
@@ -21,7 +40,7 @@ export function Schedule() {
             type="button"
             onClick={() => setView('week')}
             className={`rounded-lg px-4 py-2 text-[11px] font-medium ${
-              view === 'week' ? 'bg-[#60438f] text-white' : 'text-[#887b92]'
+              view === 'week'? 'bg-[#60438f] text-white' : 'text-[#887b92]'
             }`}
           >
             This week
@@ -30,7 +49,7 @@ export function Schedule() {
             type="button"
             onClick={() => setView('month')}
             className={`rounded-lg px-4 py-2 text-[11px] font-medium ${
-              view === 'month' ? 'bg-[#60438f] text-white' : 'text-[#887b92]'
+              view === 'month'? 'bg-[#60438f] text-white' : 'text-[#887b92]'
             }`}
           >
             June 2025
@@ -38,7 +57,7 @@ export function Schedule() {
         </div>
       </div>
 
-      {view === 'month' ? (
+      {view === 'month'? (
         <div className="ps-panel mt-10 rounded-2xl p-5 md:p-7">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="text-[15px] font-semibold text-[#3d324b]">
@@ -72,7 +91,7 @@ export function Schedule() {
                 key={index}
                 className={`min-h-16 rounded-lg p-2 text-left text-[11px] ${
                   [20, 21, 22, 27].includes(index + 1)
-                    ? 'bg-[#f0e9f7] font-semibold text-[#634493]'
+                   ? 'bg-[#f0e9f7] font-semibold text-[#634493]'
                     : 'text-[#84798e]'
                 }`}
               >
@@ -87,7 +106,7 @@ export function Schedule() {
       ) : (
         <div className="mt-10">
           <div className="mb-5 flex items-center justify-between">
-            <p className="text-[12px] text-[#887b92]">19 — 25 June 2025</p>
+            <p className="text-[12px] text-[#887b92]">19 — 25 June 2025 • {allItems.length} events</p>
             <button
               type="button"
               className="flex items-center gap-2 text-[11px] font-semibold text-[#704ca5]"
@@ -96,11 +115,11 @@ export function Schedule() {
             </button>
           </div>
           <div className="ps-panel overflow-hidden rounded-2xl">
-            {scheduleItems.slice(0, 3).map((item, index) => (
+            {allItems.slice(0, 10).map((item: any, index: number) => (
               <article
-                key={item.day}
+                key={item.id || item.day + item.title}
                 className={`flex gap-4 px-5 py-5 md:gap-7 md:px-7 ${
-                  index !== 2 ? 'border-b border-[#eeeaf3]' : ''
+                  index!== allItems.slice(0, 10).length - 1? 'border-b border-[#eeeaf3]' : ''
                 }`}
               >
                 <div className="flex w-12 shrink-0 flex-col items-center">
