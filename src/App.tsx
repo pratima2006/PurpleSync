@@ -15,6 +15,7 @@ import { Admin } from '../app/Admin';
 import { Settings } from '../app/Settings';
 import { FAQ } from '../app/FAQ';
 import { Help } from '../app/Help';
+import { PaletteOfMemories } from '../app/PaletteOfMemories';
 
 const validPages: PageKey[] = [
   'home',
@@ -28,6 +29,7 @@ const validPages: PageKey[] = [
   'settings',
   'faq',
   'help',
+  'palette',
 ];
 
 function pageFromPath(pathname: string): PageKey {
@@ -71,6 +73,7 @@ function Shell() {
     if (page === 'settings') return <Settings />;
     if (page === 'faq') return <FAQ />;
     if (page === 'help') return <Help />;
+    if (page === 'palette') return <PaletteOfMemories />;
     return (
       <Home
         onNavigate={navigate}
