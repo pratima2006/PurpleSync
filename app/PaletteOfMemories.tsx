@@ -1,5 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronRight, ListFilter, Cake, Disc3, HeartCrack, Dog, Cat, Users, PartyPopper, Sparkles, PlayCircle, Trophy, Shield, X, ExternalLink, CalendarDays } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 
 type EventType = 'birthday' | 'album' | 'pet' | 'army' | 'festa' | 'anniversary' | 'mv' | 'black' | 'award' | 'enlist';
 
@@ -13,6 +15,7 @@ type ArchiveEvent = {
   year?: string;
   time?: string;
   location?: string;
+  id?: string;
 };
 
 const events: ArchiveEvent[] = [
@@ -73,14 +76,30 @@ export function PaletteOfMemories() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [filter, setFilter] = useState("all");
   const [selectedDate, setSelectedDate] = useState<number | null>(today.getDate());
+  const [firebaseEvents, setFirebaseEvents] = useState<ArchiveEvent[]>([]);
 
   const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const daysInMonth = new Date(2025, currentMonth + 1, 0).getDate();
   const weekDates = useMemo(() => getWeekDates(today), []);
 
+  // FIREBASE LIVE - ADMIN SE JO ADD KAREGI WO YAHAN LIVE AYEGA
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "paletteEvents"), (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id,...d.data() } as ArchiveEvent));
+      setFirebaseEvents(list);
+      localStorage.setItem('ps_admin_paletteEvents', JSON.stringify(list));
+    });
+    // old localStorage fallback bhi
+    const old = JSON.parse(localStorage.getItem('ps_admin_paletteEvents') || '[]');
+    if (old.length > 0) setFirebaseEvents(old);
+    return () => unsub();
+  }, []);
+
+  const allEvents = useMemo(() => [...events,...firebaseEvents], [firebaseEvents]);
+
   const getEventsForDay = (day: number, month = currentMonth) => {
     const mmdd = `${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-    let ev = events.filter(e => e.date === mmdd);
+    let ev = allEvents.filter(e => e.date === mmdd);
     if(view === 'month' && filter!== "all"){
       const f = filters.find(f=>f.key===filter);
       if(f) ev = ev.filter(e=> f.types.includes(e.type));
@@ -88,7 +107,7 @@ export function PaletteOfMemories() {
     return ev;
   };
 
-  const selectedEvents = useMemo(() => selectedDate? getEventsForDay(selectedDate) : [], [selectedDate, filter, currentMonth, view]);
+  const selectedEvents = useMemo(() => selectedDate? getEventsForDay(selectedDate) : [], [selectedDate, filter, currentMonth, view, allEvents]);
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
