@@ -1,13 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BookOpen, ChevronDown, FileText, Radio } from 'lucide-react';
-import { updates } from '../components/data';
+import { updates as defaultUpdates } from '../components/data';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 export function Updates() {
   const [filter, setFilter] = useState('All');
   const [expanded, setExpanded] = useState<number | null>(1);
+  const [allUpdates, setAllUpdates] = useState(defaultUpdates);
   const filters = ['All', 'Notice', 'Release', 'Broadcast', 'Community'];
-  const filtered = updates.filter(
-    (item) => filter === 'All' || item.category === filter.toUpperCase(),
+
+  // FIREBASE LIVE
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "updates"), (snap) => {
+      const fb = snap.docs.map(d => ({
+        id: d.id,
+       ...d.data()
+      } as any));
+      if (fb.length > 0) {
+        setAllUpdates([...fb,...defaultUpdates]);
+      } else {
+        setAllUpdates(defaultUpdates);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const filtered = allUpdates.filter(
+    (item: any) => filter === 'All' || item.category === filter.toUpperCase(),
   );
 
   return (
@@ -35,7 +55,7 @@ export function Updates() {
             onClick={() => setFilter(item)}
             className={`whitespace-nowrap rounded-full border px-4 py-2 text-[11px] font-medium ${
               filter === item
-                ? 'border-[#60438f] bg-[#60438f] text-white'
+              ? 'border-[#60438f] bg-[#60438f] text-white'
                 : 'border-[#ded6e9] bg-white text-[#766a84]'
             }`}
           >
@@ -45,15 +65,15 @@ export function Updates() {
       </div>
 
       <div className="ps-panel mt-5 overflow-hidden rounded-2xl">
-        {filtered.map((item, index) => (
+        {filtered.map((item: any, index: number) => (
           <article
-            key={item.id}
-            className={`${index !== filtered.length - 1 ? 'border-b border-[#eeeaf3]' : ''}`}
+            key={item.id || item.title}
+            className={`${index!== filtered.length - 1? 'border-b border-[#eeeaf3]' : ''}`}
           >
             <button
               type="button"
               onClick={() =>
-                setExpanded(expanded === item.id ? null : item.id)
+                setExpanded(expanded === item.id? null : item.id)
               }
               className="flex w-full items-start gap-4 px-5 py-5 text-left md:px-7"
               aria-expanded={expanded === item.id}
@@ -61,11 +81,11 @@ export function Updates() {
               <div
                 className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${
                   item.accent === 'gold'
-                    ? 'bg-[#f5ead1] text-[#96733a]'
+                  ? 'bg-[#f5ead1] text-[#96733a]'
                     : item.accent === 'blue'
-                      ? 'bg-[#e3ebf3] text-[#5c7791]'
+                    ? 'bg-[#e3ebf3] text-[#5c7791]'
                       : item.accent === 'rose'
-                        ? 'bg-[#f3e3e9] text-[#a06177]'
+                      ? 'bg-[#f3e3e9] text-[#a06177]'
                         : 'bg-[#eee5f7] text-[#77599f]'
                 }`}
               >
@@ -93,7 +113,7 @@ export function Updates() {
               <ChevronDown
                 size={16}
                 className={`mt-2 shrink-0 text-[#aa9faf] transition-transform ${
-                  expanded === item.id ? 'rotate-180' : ''
+                  expanded === item.id? 'rotate-180' : ''
                 }`}
               />
             </button>
