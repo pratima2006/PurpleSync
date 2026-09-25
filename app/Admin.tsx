@@ -32,7 +32,7 @@ export function Admin() {
 
   // ACHIEVEMENTS - PRO
   const [achievements, setAchievements] = useState<any[]>([]);
-  const [achieveForm, setAchieveForm] = useState({ type: 'RECORD', year: '2025', title: '', subtitle: '', date: '18 June 2025', link: '' });
+  const [achieveForm, setAchieveForm] = useState({ type: 'RECORD', year: '2025', title: '', subtitle: '', fullInfo: '', date: '18 June 2025', link: '' });
   const [editingId, setEditingId] = useState<string|null>(null);
   const [showForm, setShowForm] = useState(false);
 
@@ -86,7 +86,7 @@ export function Admin() {
     } else {
       await addDoc(collection(db, "achievementItems"), {...achieveForm, hidden: false, createdAt: new Date().toISOString()});
     }
-    setAchieveForm({ type: 'RECORD', year: '2025', title: '', subtitle: '', date: '18 June 2025', link: '' });
+    setAchieveForm({ type: 'RECORD', year: '2025', title: '', subtitle: '', fullInfo: '', date: '18 June 2025', link: '' });
     setShowForm(false);
     alert(editingId?'Updated':'Published');
   };
@@ -98,7 +98,7 @@ export function Admin() {
     await updateDoc(doc(db, "achievementItems", item.id), { hidden:!item.hidden });
   };
   const startEdit = (item: any) => {
-    setAchieveForm({ type: item.type||'RECORD', year: item.year||'2025', title: item.title||'', subtitle: item.subtitle||'', date: item.date||'18 June 2025', link: item.link||'' });
+    setAchieveForm({ type: item.type||'RECORD', year: item.year||'2025', title: item.title||'', subtitle: item.subtitle||'', fullInfo: item.fullInfo||item.description||'', date: item.date||'18 June 2025', link: item.link||'' });
     setEditingId(item.id);
     setShowForm(true);
     window.scrollTo({top:0, behavior:'smooth'});
@@ -159,7 +159,7 @@ export function Admin() {
 
           <div className="mt-6 flex items-center justify-between">
             <h2 className="text-[14px] font-semibold">Achievements · {achievements.length} custom + {defaultAchievements.length} default = {allAchForCount.length} total</h2>
-            <button onClick={()=>{setShowForm(!showForm); setEditingId(null); setAchieveForm({ type: 'RECORD', year: '2025', title: '', subtitle: '', date: '18 June 2025', link: '' })}} className="flex items-center gap-1.5 bg-[#5e428f] text-white px-3.5 py-2 rounded-full text-[11px] font-medium"><Plus size={14}/> {showForm?'Close':'Add New Archive'}</button>
+            <button onClick={()=>{setShowForm(!showForm); setEditingId(null); setAchieveForm({ type: 'RECORD', year: '2025', title: '', subtitle: '', fullInfo: '', date: '18 June 2025', link: '' })}} className="flex items-center gap-1.5 bg-[#5e428f] text-white px-3.5 py-2 rounded-full text-[11px] font-medium"><Plus size={14}/> {showForm?'Close':'Add New Archive'}</button>
           </div>
 
           {showForm && (
@@ -170,6 +170,18 @@ export function Admin() {
               </div>
               <input value={achieveForm.title} onChange={e=>setAchieveForm({...achieveForm, title: e.target.value})} placeholder="Title - Three decades. One name..." className="w-full border p-2.5 rounded-xl text-[12px] font-medium" />
               <textarea value={achieveForm.subtitle} onChange={e=>setAchieveForm({...achieveForm, subtitle: e.target.value})} placeholder="Subtitle - The first group to place three albums at No. 1..." className="w-full border p-2.5 rounded-xl text-[12px] min-h-[80px]" />
+
+              {/* YAHI NAYA BOX HAI - BADI INFO KE LIYE */}
+              <div>
+                <label className="ps-mono text-[9px] text-[#8068a9] ml-1">FULL INFORMATION / BIG DESCRIPTION</label>
+                <textarea
+                  value={achieveForm.fullInfo}
+                  onChange={e=>setAchieveForm({...achieveForm, fullInfo: e.target.value})}
+                  placeholder="Yahan badi info likh - is achievement ka full detail, story, context... Ye detail page pe dikhega."
+                  className="mt-1 w-full border p-3 rounded-xl text-[12px] min-h-[120px] bg-white border-[#e0d4ed] focus:border-[#5e428f] outline-none"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <input value={achieveForm.date} onChange={e=>setAchieveForm({...achieveForm, date: e.target.value})} placeholder="Date - 18 June 2025" className="border p-2.5 rounded-xl text-[12px]" />
                 <input value={achieveForm.link} onChange={e=>setAchieveForm({...achieveForm, link: e.target.value})} placeholder="Link (optional) - https://..." className="border p-2.5 rounded-xl text-[12px]" />
@@ -190,6 +202,7 @@ export function Admin() {
                     <div className="flex items-center gap-2"><span className="text-[9px] px-2 py-0.5 rounded-full bg-[#f5f0fb] text-[#5e428f] font-bold">{a.type}</span><span className="text-[9px] text-[#9a8ea2]">{a.year} {a.hidden&&'· HIDDEN'}</span></div>
                     <p className="text-[12px] font-medium mt-1 truncate">{a.title}</p>
                     <p className="text-[10px] text-[#8e819c] truncate">{a.subtitle}</p>
+                    {a.fullInfo && <p className="text-[9px] text-[#b5a5c8] truncate mt-0.5">{a.fullInfo}</p>}
                   </div>
                   <div className="flex gap-1">
                     <button onClick={()=>startEdit(a)} className="h-8 w-8 rounded-full bg-[#f5f0fb] text-[#5e428f] flex items-center justify-center"><Pencil size={12}/></button>
