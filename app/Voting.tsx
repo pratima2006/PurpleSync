@@ -54,16 +54,14 @@ function formatFourUnits(item: any) {
 
 export function Voting() {
   const [filter, setFilter] = useState<'all' | 'open' | 'ended' | 'upcoming'>('all');
-  const [ready, setReady] = useState<number[]>([]);
-  const [expanded, setExpanded] = useState<number | null>(null);
+  const [ready, setReady] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState<any>(null);
   const [seconds, setSeconds] = useState(18 * 3600 + 42 * 60 + 9);
   const [allItems, setAllItems] = useState<VotingItem[]>(defaultVotingItems);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
-
-    // FIREBASE LIVE LISTENER
     const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
       const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any));
       if (firestoreItems.length > 0) {
@@ -72,7 +70,6 @@ export function Voting() {
         setAllItems(defaultVotingItems);
       }
     });
-
     return () => {
       clearInterval(t);
       unsub();
@@ -192,16 +189,16 @@ export function Voting() {
             onClick={() => setFilter(item)}
             className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${
               filter === item
-           ? 'border-[#60438f] bg-[#60438f] text-white'
+               ? 'border-[#60438f] bg-[#60438f] text-white'
                 : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'
             }`}
           >
             {item === 'all'
-         ? 'All Windows'
+             ? 'All Windows'
               : item === 'open'
-           ? 'Open Now'
+               ? 'Open Now'
                 : item === 'ended'
-             ? 'Recently Ended'
+                 ? 'Recently Ended'
                   : 'Upcoming'}
           </button>
         ))}
@@ -222,9 +219,9 @@ export function Voting() {
                     <span
                       className={`h-2 w-2 rounded-full ${
                         item.status === 'open'
-                     ? 'bg-[#6aaf8f]'
+                         ? 'bg-[#6aaf8f]'
                           : item.status === 'ended'
-                       ? 'bg-[#b3a9bc]'
+                           ? 'bg-[#b3a9bc]'
                             : 'bg-[#c3a968]'
                       }`}
                     />
@@ -242,13 +239,13 @@ export function Voting() {
                     e.stopPropagation();
                     setReady((current) =>
                       current.includes(item.id)
-                   ? current.filter((id) => id!== item.id)
+                       ? current.filter((id) => id!== item.id)
                         : [...current, item.id],
                     );
                   }}
                   className={`rounded-lg border p-2 ${
                     ready.includes(item.id)
-                 ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
+                     ? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]'
                       : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'
                   }`}
                 >
