@@ -11,7 +11,7 @@ import { MobileNav } from '../components/MobileNav';
 import { SearchPanel } from '../components/SearchPanel';
 import { Topbar } from '../components/Topbar';
 import type { PageKey } from '../components/types';
-import { Admin } from '../app/Admin';
+import { Admin, UserAdminPanel } from '../app/Admin';
 import { Settings } from '../app/Settings';
 import { FAQ } from '../app/FAQ';
 import { Help } from '../app/Help';
@@ -26,6 +26,7 @@ const validPages: PageKey[] = [
   'links',
   'members',
   'admin',
+  'user-admin',
   'settings',
   'faq',
   'help',
@@ -33,7 +34,9 @@ const validPages: PageKey[] = [
 ];
 
 function pageFromPath(pathname: string): PageKey {
-  const value = pathname.replace(/^\/+/, '').split('/')[0] as PageKey;
+  const raw = pathname.replace(/^\/+/, '').split('/')[0];
+  // user-admin ke liye hyphen handle
+  const value = raw as PageKey;
   return validPages.includes(value)? value : 'home';
 }
 
@@ -70,6 +73,7 @@ function Shell() {
     if (page === 'links') return <Links />;
     if (page === 'members') return <Members />;
     if (page === 'admin') return <Admin />;
+    if (page === 'user-admin') return <UserAdminPanel />;
     if (page === 'settings') return <Settings />;
     if (page === 'faq') return <FAQ />;
     if (page === 'help') return <Help />;
@@ -83,14 +87,17 @@ function Shell() {
     );
   }, [page, dismissed]);
 
+  // user-admin pe Topbar aur MobileNav hide karna hai taki white clean page lage
+  const isUserAdmin = page === 'user-admin';
+
   return (
     <div className="ps-shell">
       <main className="ps-main ml-0">
-        <Topbar page={page} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />
+        {!isUserAdmin && <Topbar page={page} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />}
         {content}
       </main>
-      <MobileNav page={page} onNavigate={navigate} />
-      {searchOpen && <SearchPanel onClose={() => setSearchOpen(false)} onNavigate={navigate} />}
+      {!isUserAdmin && <MobileNav page={page} onNavigate={navigate} />}
+      {searchOpen &&!isUserAdmin && <SearchPanel onClose={() => setSearchOpen(false)} onNavigate={navigate} />}
     </div>
   );
 }
