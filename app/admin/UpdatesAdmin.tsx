@@ -1,15 +1,26 @@
 import { useEffect, useState, useMemo } from 'react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Trash2, Save, Pencil, Eye, EyeOff, Plus, Link2, X } from 'lucide-react';
+import { Trash2, Save, Pencil, Eye, EyeOff, Link2, X, Search, Bell, Disc3, RadioTower, Users, Sparkles } from 'lucide-react';
 
-type UpdateCategory = 'NOTICE' | 'RELEASE' | 'BROADCAST' | 'COMMUNITY';
-const CATS: UpdateCategory[] = ['NOTICE','RELEASE','BROADCAST','COMMUNITY'];
+type UpdateCategory = 'NOTICE' | 'RELEASE' | 'BROADCAST' | 'COMMUNITY' | 'OTHER';
+const CATS: UpdateCategory[] = ['NOTICE','RELEASE','BROADCAST','COMMUNITY','OTHER'];
 const ALL_TABS = ['All',...CATS] as const;
+
+function getCatConfig(cat: string){
+  const c = (cat||'').toUpperCase();
+  if(c==='RELEASE') return { bg:'bg-[#fef08a]', text:'text-[#854d0e]', icon: Disc3 };
+  if(c==='BROADCAST') return { bg:'bg-[#bfdbfe]', text:'text-[#1e40af]', icon: RadioTower };
+  if(c==='COMMUNITY') return { bg:'bg-[#fecaca]', text:'text-[#991b1b]', icon: Users };
+  if(c==='OTHER') return { bg:'bg-[#bbf7d0]', text:'text-[#14532d]', icon: Sparkles };
+  return { bg:'bg-[#e9d5ff]', text:'text-[#6b21a8]', icon: Bell };
+}
 
 export function UpdatesAdmin(){
   const [items,setItems]=useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<typeof ALL_TABS[number]>('All');
+  const [search, setSearch] = useState('');
+  const [showFullList, setShowFullList] = useState(false);
   const [form,setForm]=useState({
     category:'NOTICE' as UpdateCategory,
     title:'',
@@ -28,7 +39,6 @@ export function UpdatesAdmin(){
     return ()=>unsub();
   },[]);
 
-  // DATE KE HISAB SE SORTING - dono admin & app me same
   const sortedItems = useMemo(()=>{
     return [...items].sort((a,b)=>{
       const da = new Date(a.date || a.createdAt).getTime();
@@ -38,9 +48,20 @@ export function UpdatesAdmin(){
   }, [items]);
 
   const filteredItems = useMemo(()=>{
-    if(activeTab==='All') return sortedItems;
-    return sortedItems.filter((it:any)=> (it.category||'').toUpperCase()===activeTab);
-  }, [sortedItems, activeTab]);
+    let base = activeTab==='All'? sortedItems : sortedItems.filter((it:any)=> (it.category||'').toUpperCase()===activeTab);
+    if(activeTab==='All' && search.trim()){
+      const q = search.toLowerCase();
+      base = base.filter((it:any)=> (it.title||'').toLowerCase().includes(q) || (it.summary||'').toLowerCase().includes(q) || (it.fullInfo||'').toLowerCase().includes(q));
+    }
+    return base;
+  }, [sortedItems, activeTab, search]);
+
+  const counts = useMemo(()=>{
+    const map: any = {};
+    CATS.forEach(c=> map[c] = sortedItems.filter((it:any)=> (it.category||'').toUpperCase()===c).length);
+    map['All'] = sortedItems.length;
+    return map;
+  }, [sortedItems]);
 
   const save=async()=>{
     if(!form.title.trim()) return alert('Title required');
@@ -50,8 +71,8 @@ export function UpdatesAdmin(){
       summary: form.summary,
       fullInfo: form.fullInfo,
       date: form.date,
-      accent: form.accent,
-      link: form.links[0] || '', // backward compat
+      accent: form.category==='RELEASE'?'gold':form.category==='BROADCAST'?'blue':form.category==='COMMUNITY'?'rose':form.category==='OTHER'?'green':'purple',
+      link: form.links[0] || '',
       links: form.links.filter(l=>l.trim()!==''),
       hidden: false,
       createdAt: new Date().toISOString(),
@@ -67,7 +88,7 @@ export function UpdatesAdmin(){
 
   const startEdit = (it:any)=>{
     setForm({
-      category: (it.category||'NOTICE').toUpperCase(),
+      category: (it.category||'NOTICE').toUpperCase() as UpdateCategory,
       title: it.title||'',
       summary: it.summary||'',
       fullInfo: it.fullInfo||it.summary||'',
@@ -83,6 +104,8 @@ export function UpdatesAdmin(){
 
   const handleTabClick = (tab: typeof ALL_TABS[number])=>{
     setActiveTab(tab);
+    setShowFullList(false);
+    setSearch('');
     if(tab!=='All'){
       setForm(prev=>({...prev, category: tab as UpdateCategory}));
       setShowForm(true);
@@ -94,7 +117,6 @@ export function UpdatesAdmin(){
   const updateLink = (idx:number, val:string)=>{
     const newLinks = [...form.links];
     newLinks[idx]=val;
-    // agar last box me likha to naya khali box add karo - jaise tune bola
     if(idx===newLinks.length-1 && val.trim()!==''){
       newLinks.push('');
     }
@@ -108,39 +130,54 @@ export function UpdatesAdmin(){
         <p className="text-[10px] text-[#8e819c]">Top 3 All ke home.tsx pe dikhenge</p>
       </div>
 
-      {/* TABS - PIC JAISA */}
+      {/* TABS */}
       <div className="flex gap-2 flex-wrap">
-        {ALL_TABS.map(tab=>(
-          <button
-            key={tab}
-            onClick={()=>handleTabClick(tab)}
-            className={`px-3.5 py-1.5 rounded-full text-[11px] font-medium border transition-all ${activeTab===tab?'bg-black text-white border-black':'bg-white text-[#6b5a7e] border-[#e0d4ed] hover:bg-[#f5f0fb]'}`}
-          >
-            {tab==='All'?'All': tab.charAt(0)+tab.slice(1).toLowerCase()}
-          </button>
-        ))}
+        {ALL_TABS.map(tab=>{
+          const cnt = counts[tab] || 0;
+          return (
+            <button
+              key={tab}
+              onClick={()=>handleTabClick(tab)}
+              className={`px-3.5 py-1.5 rounded-full text-[11px] font-medium border transition-all ${activeTab===tab?'bg-black text-white border-black':'bg-white text-[#6b5a7e] border-[#e0d4ed] hover:bg-[#f5f0fb]'}`}
+            >
+              {tab==='All'?`All · ${cnt}`: `${tab.charAt(0)+tab.slice(1).toLowerCase()} · ${cnt}`}
+            </button>
+          );
+        })}
       </div>
 
-      {/* FORM + PREVIEW - jab Notice/Release etc pe click hoga */}
+      {/* SEARCH BAR - ONLY FOR ALL */}
+      {activeTab==='All' && (
+        <div className="relative">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8e819c]" />
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search updates by title, brief..." className="w-full border border-[#e0d4ed] bg-white pl-9 pr-3 py-2.5 rounded-xl text-[12px]" />
+        </div>
+      )}
+
+      {/* FORM + PREVIEW */}
       {showForm && activeTab!=='All' && (
         <div className="space-y-3">
-          {/* LIVE PREVIEW - JAISA APP ME DIKHEGA */}
           <div>
             <p className="ps-mono text-[9px] text-[#8068a9] mb-2">LIVE PREVIEW · EXACT APP JAISA</p>
-            <div className="rounded-2xl bg-white border border-[#e0d4ed] p-4 shadow-sm">
-              <div className="flex gap-3">
-                <div className={`h-9 w-9 rounded-full flex items-center justify-center text-[12px] ${form.category==='NOTICE'?'bg-[#e9e2f8]': form.category==='RELEASE'?'bg-[#fff0c6]': form.category==='BROADCAST'?'bg-[#dbeafe]':'bg-[#fce7f3]'}`}>📄</div>
-                <div className="flex-1 min-w-0">
-                  <p className="ps-mono text-[9px] text-[#8e819c] uppercase">{form.category} · {form.date || 'Today'}</p>
-                  <p className="text-[13px] font-semibold leading-[1.3] mt-1">{form.title || 'BTS WORLD TOUR “ARIRANG” — notice on ticketing details'}</p>
-                  <p className="text-[11px] text-[#6b5a7e] mt-1 line-clamp-2">{form.summary || 'BIGHIT MUSIC has shared the first set of ticketing information...'}</p>
-                  {form.links.filter(l=>l.trim()).length>0 && <p className="text-[10px] text-blue-600 mt-2 underline truncate">{form.links.filter(l=>l.trim())[0]}</p>}
+            {(()=>{
+              const cfg = getCatConfig(form.category);
+              const Icon = cfg.icon;
+              return (
+                <div className="rounded-2xl bg-white border border-[#e0d4ed] p-4 shadow-sm">
+                  <div className="flex gap-3">
+                    <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg} ${cfg.text}`}><Icon size={16}/></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="ps-mono text-[9px] text-[#8e819c] uppercase">{form.category} · {form.date || 'Today'}</p>
+                      <p className="text-[13px] font-semibold leading-[1.3] mt-1">{form.title || 'BTS WORLD TOUR “ARIRANG” — notice on ticketing details'}</p>
+                      <p className="text-[11px] text-[#6b5a7e] mt-1 line-clamp-2">{form.summary || 'BIGHIT MUSIC has shared the first set of ticketing information...'}</p>
+                      {form.links.filter(l=>l.trim()).length>0 && <p className="text-[10px] text-blue-600 mt-2 underline truncate">{form.links.filter(l=>l.trim())[0]}</p>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
 
-          {/* WHITE BOX - TITLE, DATE, BRIEF, INFO, LINKS */}
           <div className="border p-4 rounded-2xl bg-white space-y-3 shadow-sm">
             <div className="flex justify-between items-center">
               <h3 className="text-[12px] font-semibold">Add {activeTab} · Info Box</h3>
@@ -167,11 +204,11 @@ export function UpdatesAdmin(){
             </div>
 
             <div>
-              <label className="text-[10px] text-[#8e819c] flex items-center gap-1"><Link2 size={10}/> Attach Links (MV release link etc)</label>
+              <label className="text-[10px] text-[#8e819c] flex items-center gap-1"><Link2 size={10}/> Attach Links</label>
               <div className="space-y-2 mt-1">
                 {form.links.map((lnk, idx)=>(
                   <div key={idx} className="flex gap-2">
-                    <input value={lnk} onChange={e=>updateLink(idx, e.target.value)} placeholder={idx===0?"https://youtube.com/watch?v=... (MV Link)":"Add more link..."} className="flex-1 border border-[#e0d4ed] p-2.5 rounded-xl text-[11px]" />
+                    <input value={lnk} onChange={e=>updateLink(idx, e.target.value)} placeholder={idx===0?"https://youtube.com/watch?v=...":"Add more link..."} className="flex-1 border border-[#e0d4ed] p-2.5 rounded-xl text-[11px]" />
                     {form.links.length>1 && <button onClick={()=>setForm({...form, links: form.links.filter((_,i)=>i!==idx)})} className="h-9 w-9 bg-[#ffe5e5] rounded-xl flex items-center justify-center"><Trash2 size={12}/></button>}
                   </div>
                 ))}
@@ -181,34 +218,39 @@ export function UpdatesAdmin(){
 
             <button onClick={save} className="w-full bg-black text-white p-3 rounded-xl text-[12px] font-medium flex items-center justify-center gap-2"><Save size={14}/> {editId?`Update ${activeTab}`:`Publish ${activeTab}`}</button>
           </div>
+
+          {/* VIEW FULL {CATEGORY} ↝ LOGIC */}
+          <button onClick={()=>setShowFullList(!showFullList)} className="w-full text-left text-[11px] font-semibold text-[#5e428f] bg-white border border-[#e0d4ed] rounded-xl px-4 py-3 hover:bg-[#f5f0fb]">
+            {showFullList? `View less ${activeTab.toLowerCase()} ↝` : `View full ${activeTab.toLowerCase()} ↝ (${filteredItems.length} boxes)`}
+          </button>
         </div>
       )}
 
-      {/* LIST - PIC JAISA BOXES - DATE KE HISAB SE */}
+      {/* LIST */}
       <div className="rounded-2xl bg-white border border-[#e0d4ed] overflow-hidden">
-        {filteredItems.length===0? <p className="p-6 text-[12px] text-[#8e819c] text-center">No {activeTab} updates yet</p> :
-          filteredItems.map((it:any)=>(
-            <div key={it.id} className={`flex gap-3 p-4 border-b border-[#f3eef9] last:border-0 bg-white ${it.hidden?'opacity-50':''}`}>
-              <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 text-[11px] ${it.category==='NOTICE'?'bg-[#e9e2f8]': it.category==='RELEASE'?'bg-[#fff0c6]': it.category==='BROADCAST'?'bg-[#dbeafe]':'bg-[#fce7f3]'}`}>📄</div>
-              <div className="flex-1 min-w-0">
-                <p className="ps-mono text-[8px] text-[#8e819c] uppercase">{it.category} · {it.date}</p>
-                <p className="text-[12px] font-medium leading-[1.3] mt-1 truncate">{it.title}</p>
-                <p className="text-[11px] text-[#6b5a7e] truncate">{it.summary}</p>
-                {it.links?.[0] && <a href={it.links[0]} target="_blank" className="text-[10px] text-blue-600 underline truncate block mt-1">{it.links[0]}</a>}
+        {(activeTab!=='All' &&!showFullList && showForm)? (
+          <p className="p-6 text-[11px] text-[#8e819c] text-center">Click "View full {activeTab.toLowerCase()} ↝" to see all {activeTab} boxes</p>
+        ) : filteredItems.length===0? <p className="p-6 text-[12px] text-[#8e819c] text-center">No {activeTab} updates found</p> :
+          filteredItems.map((it:any)=>{
+            const cfg = getCatConfig(it.category);
+            const Icon = cfg.icon;
+            return (
+              <div key={it.id} className={`flex gap-3 p-4 border-b border-[#f3eef9] last:border-0 bg-white ${it.hidden?'opacity-50':''}`}>
+                <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg} ${cfg.text}`}><Icon size={14}/></div>
+                <div className="flex-1 min-w-0">
+                  <p className="ps-mono text-[8px] text-[#8e819c] uppercase">{it.category} · {it.date}</p>
+                  <p className="text-[12px] font-medium leading-[1.3] mt-1 truncate">{it.title}</p>
+                  <p className="text-[11px] text-[#6b5a7e] truncate">{it.summary}</p>
+                  {it.links?.[0] && <a href={it.links[0]} target="_blank" className="text-[10px] text-blue-600 underline truncate block mt-1">{it.links[0]}</a>}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button onClick={()=>startEdit(it)} className="h-7 w-7 bg-[#f5f0fb] rounded-full flex items-center justify-center"><Pencil size={11}/></button>
+                  <button onClick={async()=>{ await updateDoc(doc(db,"updates",it.id), { hidden:!it.hidden }); }} className="h-7 w-7 bg-[#f5f0fb] rounded-full flex items-center justify-center">{it.hidden?<EyeOff size={11}/>:<Eye size={11}/>}</button>
+                  <button onClick={async()=>{if(confirm('Delete?')) await deleteDoc(doc(db,"updates",it.id))}} className="h-7 w-7 bg-[#ffe5e5] rounded-full flex items-center justify-center"><Trash2 size={11}/></button>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <button onClick={()=>startEdit(it)} className="h-7 w-7 bg-[#f5f0fb] rounded-full flex items-center justify-center"><Pencil size={11}/></button>
-                <button onClick={async()=>{
-                  if(it.hidden!==undefined){
-                    await updateDoc(doc(db,"updates",it.id), { hidden:!it.hidden });
-                  } else {
-                    await updateDoc(doc(db,"updates",it.id), { hidden:true });
-                  }
-                }} className="h-7 w-7 bg-[#f5f0fb] rounded-full flex items-center justify-center">{it.hidden?<EyeOff size={11}/>:<Eye size={11}/>}</button>
-                <button onClick={async()=>{if(confirm('Delete this update?')) await deleteDoc(doc(db,"updates",it.id))}} className="h-7 w-7 bg-[#ffe5e5] rounded-full flex items-center justify-center"><Trash2 size={11}/></button>
-              </div>
-            </div>
-          ))
+            );
+          })
         }
       </div>
 
