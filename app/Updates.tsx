@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BookOpen, ChevronDown, FileText, Radio, ArrowLeft, ExternalLink, Info, Music, Disc3, RadioTower, Users, Sparkles, Bell } from 'lucide-react';
+import { BookOpen, ChevronDown, FileText, Radio, ArrowLeft, ExternalLink, Info, Disc3, RadioTower, Users, Sparkles } from 'lucide-react';
 import { updates as defaultUpdates } from '../components/data';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -18,12 +18,12 @@ const CopyrightNote = () => (
 
 function getCategoryConfig(category: string){
   const cat = (category||'').toUpperCase();
-  if(cat==='RELEASE') return { bg:'bg-[#fef08a]', text:'text-[#854d0e]', icon: Disc3, solid:'#facc15' };
-  if(cat==='BROADCAST') return { bg:'bg-[#bfdbfe]', text:'text-[#1e40af]', icon: RadioTower, solid:'#3b82f6' };
-  if(cat==='COMMUNITY') return { bg:'bg-[#fecaca]', text:'text-[#991b1b]', icon: Users, solid:'#ef4444' };
-  if(cat==='OTHER') return { bg:'bg-[#bbf7d0]', text:'text-[#14532d]', icon: Sparkles, solid:'#22c55e' };
-  // NOTICE default - Purple
-  return { bg:'bg-[#e9d5ff]', text:'text-[#6b21a8]', icon: Bell, solid:'#a855f7' };
+  if(cat==='RELEASE') return { bg:'bg-[#fef9c3]/70', text:'text-[#854d0e]', icon: Disc3 };
+  if(cat==='BROADCAST') return { bg:'bg-[#dbeafe]/70', text:'text-[#1e40af]', icon: RadioTower };
+  if(cat==='COMMUNITY') return { bg:'bg-[#fee2e2]/70', text:'text-[#991b1b]', icon: Users };
+  if(cat==='OTHER') return { bg:'bg-[#dcfce7]/70', text:'text-[#14532d]', icon: Sparkles };
+  // NOTICE - wahi purana FileText icon
+  return { bg:'bg-[#f3e8ff]/70', text:'text-[#6b21a8]', icon: FileText };
 }
 
 export function Updates() {
@@ -76,7 +76,6 @@ export function Updates() {
       <div className="ps-page-enter ps-content py-8 md:py-12">
         <button onClick={()=>setView('list')} className="flex items-center gap-2 text-[11px] font-semibold text-[#704ca5] mb-6"><ArrowLeft size={14}/> Back to updates</button>
 
-        {/* FULL BOX WITH TITLE, SUBTITLE, DATE INSIDE */}
         <div className="ps-panel rounded-2xl p-6 md:p-8 bg-white border border-[#eeeaf3] overflow-hidden">
           <div className="flex items-start gap-4">
             <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg} ${cfg.text}`}>
@@ -93,7 +92,6 @@ export function Updates() {
             </div>
           </div>
 
-          {/* FADE PURPLE LINE */}
           <div className="my-6 h-[1px] w-full bg-gradient-to-r from-[#a855f7]/40 via-[#a855f7]/10 to-transparent" />
 
           <div>
@@ -153,8 +151,8 @@ export function Updates() {
           return (
             <article key={item.id || item.title} className={`${index!== filtered.length - 1? 'border-b border-[#eeeaf3]' : ''}`}>
               <button type="button" onClick={() => setExpanded(expanded === item.id? null : item.id)} className="flex w-full items-start gap-4 px-5 py-5 text-left md:px-7" aria-expanded={expanded === item.id}>
-                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${cfg.bg} ${cfg.text} shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]`}>
-                  <Icon size={16} strokeWidth={2} />
+                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] ${cfg.bg} ${cfg.text}`}>
+                  <Icon size={16} strokeWidth={1.8} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap gap-2"><span className="ps-mono text-[8px] text-[#8d7da4] uppercase">{item.category}</span><span className="text-[10px] text-[#aaa2b2]">·</span><span className="text-[10px] text-[#aaa2b2]">{item.date}</span></div>
