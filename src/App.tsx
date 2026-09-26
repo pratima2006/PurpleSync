@@ -39,18 +39,17 @@ function pageFromPath(pathname: string): PageKey {
   return validPages.includes(value)? value : 'home';
 }
 
-// SILENT AUTO UPDATE - bina version.json ke
+// SILENT AUTO UPDATE - FIXED - ab pakka kaam karega
 function useSilentUpdate(){
   useEffect(()=>{
-    const silentReload = async () => {
+    let lastHtmlSnapshot = '';
+    let lastEtagSnapshot = '';
+
+    const doReload = async () => {
       try{
         if('caches' in window){
           const keys = await caches.keys();
           await Promise.all(keys.map(k => caches.delete(k)));
-        }
-        if('serviceWorker' in navigator){
-          const regs = await navigator.serviceWorker.getRegistrations();
-          for(const r of regs){ await r.update(); }
         }
       }catch{}
       window.location.reload();
@@ -58,45 +57,39 @@ function useSilentUpdate(){
 
     const checkForUpdate = async () => {
       try{
-        // 1. Check if new service worker is waiting
-        if('serviceWorker' in navigator){
-          const reg = await navigator.serviceWorker.getRegistration();
-          if(reg?.waiting){
-            reg.waiting.postMessage({type:'SKIP_WAITING'});
-            await silentReload();
-            return;
-          }
-          // Force check for new SW from Vercel
-          await reg?.update();
+        // Hum seedha index.html ka content check karenge - sabse reliable
+        const res = await fetch(`/index.html?_=${Date.now()}`, { cache: 'no-store' });
+        const html = await res.text();
+        const etag = res.headers.get('etag') || '';
+
+        if(!lastHtmlSnapshot){
+          lastHtmlSnapshot = html;
+          lastEtagSnapshot = etag;
+          if(etag) localStorage.setItem('app_etag', etag);
+          return;
         }
-        // 2. Extra check: fetch index.html no-cache to see if deploy changed (Vercel sends new ETag)
-        const res = await fetch(`/?_t=${Date.now()}`, { cache: 'no-store' });
-        const etag = res.headers.get('etag') || res.headers.get('x-vercel-cache') || '';
-        const lastEtag = localStorage.getItem('app_etag');
-        if(lastEtag && etag && lastEtag!== etag){
-          localStorage.setItem('app_etag', etag);
-          await silentReload();
-        } else if(etag){
-          localStorage.setItem('app_etag', etag);
+
+        // Agar etag badla ya html badla = naya deploy
+        const storedEtag = localStorage.getItem('app_etag');
+        if((etag && storedEtag && etag!== storedEtag) || (html && html!== lastHtmlSnapshot && html.length > 500)){
+          if(etag) localStorage.setItem('app_etag', etag);
+          await doReload();
+        } else {
+          if(etag) localStorage.setItem('app_etag', etag);
         }
       }catch{}
     };
 
-    // SW update milte hi silent reload
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-        window.location.reload();
-      });
-    }
-
     checkForUpdate();
-    const id = setInterval(checkForUpdate, 60 * 1000); // har 60 sec
+    const id = setInterval(checkForUpdate, 15000); // har 15 sec
     const onVisible = () => { if(document.visibilityState==='visible') checkForUpdate(); };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', checkForUpdate);
 
     return ()=>{
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', checkForUpdate);
     };
   },[]);
 }
