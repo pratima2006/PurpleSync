@@ -54,8 +54,6 @@ function PurpleBubbles() {
     if (!wrap) return;
     const W = wrap.clientWidth;
     const H = wrap.clientHeight;
-
-    // window ke peeche bada world, par dikhega sirf window ke andar
     const WORLD_W = W * 1.6;
     const WORLD_H = H * 1.6;
     const OFFSET_X = -W * 0.3;
@@ -107,8 +105,6 @@ function PurpleBubbles() {
         const b = bubbles[i];
         b.x += b.vx;
         b.y += b.vy;
-
-        // window ke andar hi wrap hoga - bahar page pe nahi jayega
         if(b.x < OFFSET_X - b.r) b.x = OFFSET_X + WORLD_W + b.r;
         if(b.x > OFFSET_X + WORLD_W + b.r) b.x = OFFSET_X - b.r;
         if(b.y < OFFSET_Y - b.r) b.y = OFFSET_Y + WORLD_H + b.r;
@@ -159,7 +155,6 @@ function PurpleBubbles() {
       <div className="absolute will-change-transform shadow-[inset_0_1px_2px_rgba(255,255,255,0.28),0_0_25px_rgba(180,160,255,0.18)]" />
       <div className="absolute will-change-transform blur-[0.3px] shadow-[inset_0_1px_2px_rgba(255,255,255,0.3),0_0_45px_rgba(70,30,170,0.35)]" />
       <div className="absolute will-change-transform shadow-[inset_0_1px_1px_rgba(255,255,255,0.22),0_0_22px_rgba(200,180,255,0.15)]" />
-      {/* light jo slowly ghumti hai window ke andar */}
       <div className="absolute w-[16px] h-[16px] rounded-full bg-[#d8c6ff] blur-[7px] opacity-50" style={{left:'22%', top:'30%'}} />
       <div className="absolute w-[10px] h-[10px] rounded-full bg-[#8b6cff] blur-[8px] opacity-40" style={{right:'28%', bottom:'30%'}} />
     </div>
@@ -167,25 +162,23 @@ function PurpleBubbles() {
 }
 
 export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
-  const updates: any[] = (dataModule as any).updates || [];
-  const achievements: any[] = (dataModule as any).achievements || (dataModule as any).archive || [];
+  const defaultUpdates: any[] = (dataModule as any).updates || [];
+  const defaultAchievements: any[] = (dataModule as any).achievements || (dataModule as any).archive || [];
   const votingDesks: any[] = (dataModule as any).votingDesks || (dataModule as any).votings || (dataModule as any).voting || [];
   const scheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
 
-  const liveVotingCount = votingDesks.length > 0? votingDesks.length.toString().padStart(2, '0') : "02";
   const nextSchedule = scheduleItems[0];
-  const thisMonthValue = updates.length > 0? updates.length.toString().padStart(2, '0') : "08";
-  const archiveCount = achievements.length > 0? achievements.length.toString() : "147";
-  const recentUpdates = updates.slice(0, 3);
   const calendarEvent = nextSchedule;
-  const latestArchive = achievements[0];
 
   const [allVotingItems, setAllVotingItems] = useState<any[]>(votingDesks);
+  const [liveUpdates, setLiveUpdates] = useState<any[] | null>(null);
+  const [liveAchievements, setLiveAchievements] = useState<any[] | null>(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
-    const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
+
+    const unsubVoting = onSnapshot(collection(db, "votingItems"), (snap) => {
       const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any));
       const defaults = (dataModule as any).votingItems || votingDesks;
       if (firestoreItems.length > 0) {
@@ -194,8 +187,66 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         setAllVotingItems(defaults);
       }
     });
-    return () => { clearInterval(t); unsub(); };
+
+    const unsubUpdates = onSnapshot(collection(db, "updates"), (snap) => {
+      const firestoreUpdates = snap.docs.map(d=>({id:d.id,...d.data()} as any)).filter((x:any)=>!x.hidden);
+      firestoreUpdates.sort((a:any,b:any)=>{
+        const da = new Date(a.date || a.createdAt).getTime();
+        const db2 = new Date(b.date || b.createdAt).getTime();
+        return db2 - da;
+      });
+      if(firestoreUpdates.length>0) setLiveUpdates(firestoreUpdates);
+      else setLiveUpdates(defaultUpdates);
+    });
+
+    const unsubAch = onSnapshot(collection(db, "achievementItems"), (snap) => {
+      const fbItems = snap.docs.map(d=>{
+        const data = d.data() as any;
+        if(data.hidden) return null;
+        return { id:d.id,...data };
+      }).filter(Boolean) as any[];
+      if(fbItems.length>0) setLiveAchievements([...fbItems,...defaultAchievements]);
+      else setLiveAchievements(defaultAchievements);
+    });
+
+    return () => { clearInterval(t); unsubVoting(); unsubUpdates(); unsubAch(); };
   }, []);
+
+  const updatesForHome = useMemo(()=>{
+    const src = liveUpdates || [];
+    if(src.length===0) return [];
+    return src.slice(0,3);
+  }, [liveUpdates]);
+
+  const achievementsForHome = useMemo(()=>{
+    return liveAchievements || [];
+  }, [liveAchievements]);
+
+  const latestArchive = useMemo(()=>{
+    if(achievementsForHome.length>0) return achievementsForHome[0];
+    return defaultAchievements[0];
+  }, [achievementsForHome]);
+
+  // On record ke liye logic - jaise tune bola
+  const onRecordTitle = useMemo(()=>{
+    if(!latestArchive) return "“The first group to place three albums at No. 1 across three different decades.”";
+    const sub = latestArchive.subtitle || latestArchive.title || "";
+    return `“${sub}”`;
+  }, [latestArchive]);
+
+  const onRecordSubtitle = useMemo(()=>{
+    if(!latestArchive) return "A growing archive of the milestones that keep changing the shape of the room.";
+    const full = latestArchive.fullInfo || latestArchive.subtitle || "";
+    const firstLine = full.split('\n')[0].split('.')[0];
+    return firstLine? firstLine + '.' : full.slice(0,120);
+  }, [latestArchive]);
+
+  const onRecordDate = latestArchive?.date || "18 JUNE 2025";
+  const onRecordId = latestArchive?.id || "147";
+
+  const liveVotingCount = votingDesks.length > 0? votingDesks.length.toString().padStart(2, '0') : "02";
+  const thisMonthValue = (liveUpdates?.length || defaultUpdates.length || 0).toString().padStart(2, '0');
+  const archiveCount = achievementsForHome.length > 0? achievementsForHome.length.toString() : "147";
 
   const closestVoting = useMemo(() => {
     const openWithDate = allVotingItems.filter((i: any) => i.status === 'open' && getTargetTime(i));
@@ -205,6 +256,8 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
     }
     return allVotingItems.find((i: any) => i.status === 'open') || allVotingItems[0];
   }, [allVotingItems, tick]);
+
+  const isUpdatesLoading = liveUpdates===null;
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
@@ -254,17 +307,28 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
         <section>
           <SectionHeading eyebrow="RECENTLY ON THE DESK" title="The short read" action={<button type="button" onClick={() => onNavigate('updates')} className="flex items-center gap-1 text-[11px] font-semibold text-[#704ca5]">All updates <ChevronRight size={14} /></button>} />
           <div className="ps-panel overflow-hidden rounded-2xl">
-            {recentUpdates.map((item, index) => (
-              <article key={item.id} className={`group flex gap-4 px-5 py-5 ${index!== 2? 'border-b border-[#eeeaf3]' : ''}`}>
-                <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.accent === 'gold'? 'bg-[#f5ead1] text-[#96733a]' : item.accent === 'blue'? 'bg-[#e3ebf3] text-[#5c7791]' : 'bg-[#eee5f7] text-[#77599f]'}`}><FileText size={16} strokeWidth={1.6} /></div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2"><span className="ps-mono text-[8px] text-[#8d7da4]">{item.category}</span><span className="text-[10px] text-[#aaa2b2]">·</span><span className="text-[10px] text-[#aaa2b2]">{item.date}</span></div>
-                  <h3 className="mt-1.5 text-[13px] font-semibold leading-5 text-[#3c324a] group-hover:text-[#704ca5]">{item.title}</h3>
-                  <p className="mt-1.5 line-clamp-1 text-[11px] leading-5 text-[#887e91]">{item.summary}</p>
-                </div>
-                <ChevronRight size={16} className="mt-5 shrink-0 text-[#b7adbf] transition-transform group-hover:translate-x-1" />
-              </article>
-            ))}
+            {isUpdatesLoading? (
+              <>
+                {[1,2,3].map(i=>(
+                  <div key={i} className="flex gap-4 px-5 py-5 border-b border-[#eeeaf3] animate-pulse">
+                    <div className="h-9 w-9 rounded-xl bg-[#eee5f7]"></div>
+                    <div className="flex-1 space-y-2"><div className="h-3 w-3/4 bg-[#eeeaf3] rounded"></div><div className="h-2 w-1/2 bg-[#f3eef9] rounded"></div></div>
+                  </div>
+                ))}
+              </>
+            ) : (
+              updatesForHome.map((item:any, index:number) => (
+                <article key={item.id} className={`group flex gap-4 px-5 py-5 ${index!== 2? 'border-b border-[#eeeaf3]' : ''}`}>
+                  <div className={`mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.accent === 'gold'? 'bg-[#f5ead1] text-[#96733a]' : item.accent === 'blue'? 'bg-[#e3ebf3] text-[#5c7791]' : 'bg-[#eee5f7] text-[#77599f]'}`}><FileText size={16} strokeWidth={1.6} /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><span className="ps-mono text-[8px] text-[#8d7da4]">{item.category}</span><span className="text-[10px] text-[#aaa2b2]">·</span><span className="text-[10px] text-[#aaa2b2]">{item.date}</span></div>
+                    <h3 className="mt-1.5 text-[13px] font-semibold leading-5 text-[#3c324a] group-hover:text-[#704ca5]">{item.title}</h3>
+                    <p className="mt-1.5 line-clamp-1 text-[11px] leading-5 text-[#887e91]">{item.summary}</p>
+                  </div>
+                  <ChevronRight size={16} className="mt-5 shrink-0 text-[#b7adbf] transition-transform group-hover:translate-x-1" />
+                </article>
+              ))
+            )}
           </div>
         </section>
 
@@ -299,9 +363,9 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-[#0f0b24]/80 via-transparent to-[#0f0b24]/20 pointer-events-none" />
           <div className="relative max-w-[640px]">
-            <p className="ps-mono text-[9px] text-[#bda9df]">{latestArchive? `${latestArchive.date} · ACHIEVEMENT ${latestArchive.id}` : "18 JUNE 2025 · ACHIEVEMENT 147"}</p>
-            <p className="ps-display mt-5 text-[29px] leading-[1.05] md:text-[38px]">{latestArchive? `“${latestArchive.title}”` : "“The first group to place three albums at No. 1 across three different decades.”"}</p>
-            <p className="mt-5 text-[11px] leading-5 text-[#c0b5d2]">A growing archive of the milestones that keep changing the shape of the room.</p>
+            <p className="ps-mono text-[9px] text-[#bda9df]">{onRecordDate} · ACHIEVEMENT {onRecordId}</p>
+            <p className="ps-display mt-5 text-[29px] leading-[1.05] md:text-[38px]">{onRecordTitle}</p>
+            <p className="mt-5 text-[11px] leading-5 text-[#c0b5d2]">{onRecordSubtitle}</p>
           </div>
         </div>
       </section>
