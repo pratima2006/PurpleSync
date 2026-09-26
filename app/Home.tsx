@@ -45,6 +45,33 @@ function formatFourUnits(item: any) {
   return parts.join(' ');
 }
 
+// --- NEW: Schedule date parser for Home ---
+const SHORT_MAP: any = {JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11};
+function parseScheduleDate(it:any): Date | null {
+  if(it?.date){
+    const d = new Date(it.date);
+    if(!isNaN(d.getTime())) return d;
+  }
+  if(it?.day && it?.month){
+    const m = SHORT_MAP[it.month?.toUpperCase?.()];
+    if(m!==undefined){
+      const y = it.year || 2026;
+      const d = new Date(y, m, parseInt(it.day));
+      if(!isNaN(d.getTime())) return d;
+    }
+  }
+  return null;
+}
+function formatTimeUntil(target: Date | null){
+  if(!target) return '--';
+  const diff = target.getTime() - Date.now();
+  if(diff<=0) return 'Started';
+  const d = Math.floor(diff/(1000*60*60*24));
+  const h = Math.floor((diff/(1000*60*60))%24);
+  const m = Math.floor((diff/(1000*60))%60);
+  return `${String(d).padStart(2,'0')}D : ${String(h).padStart(2,'0')}H : ${String(m).padStart(2,'0')}M`;
+}
+
 function PurpleBubbles() {
   const ref = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -165,14 +192,12 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
   const defaultUpdates: any[] = (dataModule as any).updates || [];
   const defaultAchievements: any[] = (dataModule as any).achievements || (dataModule as any).archive || [];
   const votingDesks: any[] = (dataModule as any).votingDesks || (dataModule as any).votings || (dataModule as any).voting || [];
-  const scheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
-
-  const nextSchedule = scheduleItems[0];
-  const calendarEvent = nextSchedule;
+  const defaultScheduleItems: any[] = (dataModule as any).scheduleItems || (dataModule as any).schedules || (dataModule as any).events || [];
 
   const [allVotingItems, setAllVotingItems] = useState<any[]>(votingDesks);
   const [liveUpdates, setLiveUpdates] = useState<any[] | null>(null);
   const [liveAchievements, setLiveAchievements] = useState<any[] | null>(null);
+  const [liveSchedule, setLiveSchedule] = useState<any[]>(defaultScheduleItems);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -209,8 +234,29 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
       else setLiveAchievements(defaultAchievements);
     });
 
-    return () => { clearInterval(t); unsubVoting(); unsubUpdates(); unsubAch(); };
+    const unsubSchedule = onSnapshot(collection(db, "scheduleItems"), (snap) => {
+      const fb = snap.docs.map(d=>({id:d.id,...d.data()} as any)).filter((x:any)=>!x.hidden);
+      if(fb.length>0) setLiveSchedule([...fb,...defaultScheduleItems]);
+      else setLiveSchedule(defaultScheduleItems);
+    });
+
+    return () => { clearInterval(t); unsubVoting(); unsubUpdates(); unsubAch(); unsubSchedule(); };
   }, []);
+
+  // --- NEAREST EVENT LOGIC ---
+  const calendarEventData = useMemo(()=>{
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const withDate = liveSchedule.map(it=>({it, d: parseScheduleDate(it)})).filter(x=>x.d) as {it:any, d:Date}[];
+    withDate.sort((a,b)=> a.d.getTime() - b.d.getTime());
+    const upcoming = withDate.find(x=> x.d.getTime() >= now.getTime());
+    const chosen = upcoming || withDate[0];
+    if(!chosen) return { event: liveSchedule[0], date: null as Date|null };
+    return { event: chosen.it, date: chosen.d };
+  },[liveSchedule, tick]);
+
+  const calendarEvent = calendarEventData.event;
+  const calendarEventDate = calendarEventData.date;
 
   const updatesForHome = useMemo(()=>{
     const src = liveUpdates || [];
@@ -227,7 +273,6 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
     return defaultAchievements[0];
   }, [achievementsForHome]);
 
-  // On record ke liye logic - jaise tune bola
   const onRecordTitle = useMemo(()=>{
     if(!latestArchive) return "“The first group to place three albums at No. 1 across three different decades.”";
     const sub = latestArchive.subtitle || latestArchive.title || "";
@@ -290,7 +335,7 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
 
       <div className="ps-stagger mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard label="LIVE VOTING" value={closestVoting? formatFourUnits(closestVoting) : liveVotingCount} detail="windows need your attention" />
-        <MetricCard label="NEXT UP" value={calendarEvent?.dayLabel || calendarEvent?.dateShort || "20 JUN"} detail={calendarEvent?.title? `${calendarEvent.title} · ${calendarEvent.time || '19:00 KST'}` : "press conference · 19:00 KST"} />
+        <MetricCard label="NEXT UP" value={calendarEvent?.dayLabel || calendarEvent?.dateShort || `${calendarEvent?.day || calendarEventDate?.getDate() || '20'} ${calendarEvent?.month || ''}`} detail={calendarEvent?.title? `${calendarEvent.title} · ${calendarEvent.time || '19:00 KST'}` : "press conference · 19:00 KST"} />
         <MetricCard label="THIS MONTH" value={thisMonthValue} detail="official updates logged" />
         <MetricCard label="ON RECORD" value={archiveCount} detail="achievements in the archive" />
       </div>
@@ -337,17 +382,17 @@ export function Home({ onNavigate, dismissed, onDismiss }: HomeProps) {
           <div className="ps-panel rounded-2xl p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 shrink-0 aspect-square flex-col items-center justify-center rounded-[14px] bg-[#60438f] text-white">
-                <span className="ps-mono text-[9px] text-[#d4c2ef] leading-none">{calendarEvent?.month || "JUN"}</span>
-                <span className="text-[22px] font-semibold leading-none mt-1">{calendarEvent?.day || "20"}</span>
+                <span className="ps-mono text-[9px] text-[#d4c2ef] leading-none">{calendarEvent?.month || (calendarEventDate? calendarEventDate.toLocaleString('en-US',{month:'short'}).toUpperCase() : "JUN")}</span>
+                <span className="text-[22px] font-semibold leading-none mt-1">{calendarEvent?.day || calendarEventDate?.getDate() || "20"}</span>
               </div>
               <div>
-                <p className="ps-mono text-[9px] text-[#907aa9]">{calendarEvent?.fullDate || "FRIDAY · 19:00 KST"}</p>
+                <p className="ps-mono text-[9px] text-[#907aa9]">{calendarEvent?.weekday? `${calendarEvent.weekday} · ${calendarEvent.time}` : calendarEventDate? `${calendarEventDate.toLocaleDateString('en-US',{weekday:'long'}).toUpperCase()} · ${calendarEvent?.time || '19:00 KST'}` : "FRIDAY · 19:00 KST"}</p>
                 <h3 className="mt-1 text-[14px] font-semibold leading-5 text-[#3c324a]">{calendarEvent?.title || "Press conference"}</h3>
-                <p className="mt-1 text-[11px] text-[#958a9c]">{calendarEvent?.subtitle || 'BTS WORLD TOUR “ARIRANG”'}</p>
+                <p className="mt-1 text-[11px] text-[#958a9c]">{calendarEvent?.location || calendarEvent?.subtitle || 'BTS WORLD TOUR “ARIRANG”'}</p>
               </div>
             </div>
             <div className="my-5 ps-rule" />
-            <div className="flex items-center justify-between text-[11px]"><span className="text-[#887e91]">Time until start</span><span className="ps-mono text-[10px] text-[#704ca5]">01D : 04H : 18M</span></div>
+            <div className="flex items-center justify-between text-[11px]"><span className="text-[#887e91]">Time until start</span><span className="ps-mono text-[10px] text-[#704ca5]">{formatTimeUntil(calendarEventDate)}</span></div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#eeeaf4]"><div className="h-full w-[58%] rounded-full bg-[#a586d3]" /></div>
             <button type="button" onClick={() => onNavigate('schedule')} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e1d9ec] py-2.5 text-[11px] font-semibold text-[#665575] hover:bg-[#f8f5fb]">View calendar <CalendarDays size={14} /></button>
           </div>
