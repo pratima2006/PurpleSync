@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { BookOpen, ChevronDown, FileText, Radio, ArrowLeft, ExternalLink, Info } from 'lucide-react';
+import { BookOpen, ChevronDown, FileText, Radio, ArrowLeft, ExternalLink, Info, Music, Disc3, RadioTower, Users, Sparkles, Bell } from 'lucide-react';
 import { updates as defaultUpdates } from '../components/data';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -16,13 +16,23 @@ const CopyrightNote = () => (
   </div>
 );
 
+function getCategoryConfig(category: string){
+  const cat = (category||'').toUpperCase();
+  if(cat==='RELEASE') return { bg:'bg-[#fef08a]', text:'text-[#854d0e]', icon: Disc3, solid:'#facc15' };
+  if(cat==='BROADCAST') return { bg:'bg-[#bfdbfe]', text:'text-[#1e40af]', icon: RadioTower, solid:'#3b82f6' };
+  if(cat==='COMMUNITY') return { bg:'bg-[#fecaca]', text:'text-[#991b1b]', icon: Users, solid:'#ef4444' };
+  if(cat==='OTHER') return { bg:'bg-[#bbf7d0]', text:'text-[#14532d]', icon: Sparkles, solid:'#22c55e' };
+  // NOTICE default - Purple
+  return { bg:'bg-[#e9d5ff]', text:'text-[#6b21a8]', icon: Bell, solid:'#a855f7' };
+}
+
 export function Updates() {
   const [filter, setFilter] = useState('All');
   const [expanded, setExpanded] = useState<string | number | null>(null);
   const [allUpdates, setAllUpdates] = useState<any[]>(defaultUpdates);
   const [view, setView] = useState<'list'|'detail'>('list');
   const [selected, setSelected] = useState<any>(null);
-  const filters = ['All', 'Notice', 'Release', 'Broadcast', 'Community'];
+  const filters = ['All', 'Notice', 'Release', 'Broadcast', 'Community', 'Other'];
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "updates"), (snap) => {
@@ -60,18 +70,35 @@ export function Updates() {
   };
 
   if(view==='detail' && selected){
+    const cfg = getCategoryConfig(selected.category);
+    const Icon = cfg.icon;
     return (
       <div className="ps-page-enter ps-content py-8 md:py-12">
         <button onClick={()=>setView('list')} className="flex items-center gap-2 text-[11px] font-semibold text-[#704ca5] mb-6"><ArrowLeft size={14}/> Back to updates</button>
 
-        <p className="ps-mono text-[9px] text-[#8068a9]">{selected.category} • {selected.date}</p>
-        <h1 className="mt-3 text-[26px] md:text-[32px] leading-[1.1] tracking-[-.02em] text-[#332840] max-w-[700px] font-semibold">{selected.title}</h1>
-        {selected.summary && <p className="mt-3 max-w-[600px] text-[13px] leading-6 text-[#81758d]">{selected.summary}</p>}
+        {/* FULL BOX WITH TITLE, SUBTITLE, DATE INSIDE */}
+        <div className="ps-panel rounded-2xl p-6 md:p-8 bg-white border border-[#eeeaf3] overflow-hidden">
+          <div className="flex items-start gap-4">
+            <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg} ${cfg.text}`}>
+              <Icon size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex gap-2 items-center">
+                <span className="ps-mono text-[9px] text-[#8d7da4] uppercase">{selected.category}</span>
+                <span className="text-[10px] text-[#aaa2b2]">·</span>
+                <span className="text-[10px] text-[#aaa2b2]">{selected.date}</span>
+              </div>
+              <h1 className="mt-2 text-[22px] md:text-[28px] leading-[1.15] tracking-[-.02em] text-[#332840] font-semibold">{selected.title}</h1>
+              {selected.summary && <p className="mt-3 text-[13px] leading-6 text-[#81758d]">{selected.summary}</p>}
+            </div>
+          </div>
 
-        <div className="ps-panel mt-8 rounded-2xl p-6 md:p-8 bg-white border border-[#eeeaf3]">
-          <p className="ps-mono text-[9px] text-[#907fa0]">FULL STORY • VERIFIED UPDATE</p>
-          <div className="mt-4">
-            <p className="text-[13px] leading-7 text-[#40334e] whitespace-pre-wrap">{selected.fullInfo || selected.summary}</p>
+          {/* FADE PURPLE LINE */}
+          <div className="my-6 h-[1px] w-full bg-gradient-to-r from-[#a855f7]/40 via-[#a855f7]/10 to-transparent" />
+
+          <div>
+            <p className="ps-mono text-[9px] text-[#907fa0]">FULL STORY • VERIFIED UPDATE</p>
+            <p className="mt-4 text-[13px] leading-7 text-[#40334e] whitespace-pre-wrap">{selected.fullInfo || selected.summary}</p>
 
             {(selected.links?.length>0 || selected.link) && (
               <div className="mt-8 space-y-3 border-t border-[#f3eef9] pt-5">
@@ -85,17 +112,15 @@ export function Updates() {
               </div>
             )}
           </div>
+
           <CopyrightNote />
         </div>
 
         {nextUpdate && nextUpdate.id!==selected.id && (
           <div className="mt-6">
-            <button onClick={()=>{setSelected(nextUpdate); window.scrollTo(0,0);}} className="text-left w-full rounded-2xl bg-white border border-[#e0d4ed] p-5 flex items-center justify-between hover:bg-[#faf8ff]">
-              <div>
-                <p className="text-[10px] text-[#3c82f6] font-medium">More updates ↝</p>
-                <p className="mt-1 text-[13px] font-medium text-[#3c82f6] line-clamp-1">{nextUpdate.title}</p>
-              </div>
-              <span className="text-[12px] text-[#3c82f6] font-semibold">Know more ↝</span>
+            <button onClick={()=>{setSelected(nextUpdate); window.scrollTo(0,0);}} className="text-left w-full rounded-2xl bg-white border border-[#e0d4ed] p-5 hover:bg-[#faf8ff] transition-colors">
+              <p className="text-[10px] text-[#3c82f6] font-medium">More updates ↝</p>
+              <p className="mt-1 text-[13px] font-medium text-[#3c82f6] line-clamp-1">{nextUpdate.title}</p>
             </button>
           </div>
         )}
@@ -122,24 +147,30 @@ export function Updates() {
       </div>
 
       <div className="ps-panel mt-5 overflow-hidden rounded-2xl bg-white">
-        {filtered.map((item: any, index: number) => (
-          <article key={item.id || item.title} className={`${index!== filtered.length - 1? 'border-b border-[#eeeaf3]' : ''}`}>
-            <button type="button" onClick={() => setExpanded(expanded === item.id? null : item.id)} className="flex w-full items-start gap-4 px-5 py-5 text-left md:px-7" aria-expanded={expanded === item.id}>
-              <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${item.accent === 'gold'? 'bg-[#f5ead1] text-[#96733a]' : item.accent === 'blue'? 'bg-[#e3ebf3] text-[#5c7791]' : item.accent === 'rose'? 'bg-[#f3e3e9] text-[#a06177]' : 'bg-[#eee5f7] text-[#77599f]'}`}><FileText size={16} /></div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap gap-2"><span className="ps-mono text-[8px] text-[#8d7da4]">{item.category}</span><span className="text-[10px] text-[#aaa2b2]">·</span><span className="text-[10px] text-[#aaa2b2]">{item.date}</span></div>
-                <h2 className="mt-2 text-[14px] font-semibold leading-5 text-[#3d324b]">{item.title}</h2>
-                {expanded === item.id && (
-                  <div className="mt-2">
-                    <p className="max-w-[700px] text-[12px] leading-5 text-[#887e91]">{item.summary}</p>
-                    <button onClick={(e)=>{e.stopPropagation(); openDetail(item);}} className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[#5e428f] hover:underline">View more ↝</button>
-                  </div>
-                )}
-              </div>
-              <ChevronDown size={16} className={`mt-2 shrink-0 text-[#aa9faf] transition-transform ${expanded === item.id? 'rotate-180' : ''}`} />
-            </button>
-          </article>
-        ))}
+        {filtered.map((item: any, index: number) => {
+          const cfg = getCategoryConfig(item.category);
+          const Icon = cfg.icon;
+          return (
+            <article key={item.id || item.title} className={`${index!== filtered.length - 1? 'border-b border-[#eeeaf3]' : ''}`}>
+              <button type="button" onClick={() => setExpanded(expanded === item.id? null : item.id)} className="flex w-full items-start gap-4 px-5 py-5 text-left md:px-7" aria-expanded={expanded === item.id}>
+                <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${cfg.bg} ${cfg.text} shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)]`}>
+                  <Icon size={16} strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap gap-2"><span className="ps-mono text-[8px] text-[#8d7da4] uppercase">{item.category}</span><span className="text-[10px] text-[#aaa2b2]">·</span><span className="text-[10px] text-[#aaa2b2]">{item.date}</span></div>
+                  <h2 className="mt-2 text-[14px] font-semibold leading-5 text-[#3d324b]">{item.title}</h2>
+                  {expanded === item.id && (
+                    <div className="mt-2">
+                      <p className="max-w-[700px] text-[12px] leading-5 text-[#887e91]">{item.summary}</p>
+                      <button onClick={(e)=>{e.stopPropagation(); openDetail(item);}} className="mt-3 inline-flex items-center gap-1 text-[11px] font-semibold text-[#5e428f] hover:underline">View more ↝</button>
+                    </div>
+                  )}
+                </div>
+                <ChevronDown size={16} className={`mt-2 shrink-0 text-[#aa9faf] transition-transform ${expanded === item.id? 'rotate-180' : ''}`} />
+              </button>
+            </article>
+          );
+        })}
       </div>
 
       <div className="mt-7 flex items-center gap-3 rounded-2xl bg-[#f0eaf7] px-5 py-4 text-[#64527d]">
