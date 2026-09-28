@@ -8,14 +8,52 @@ import { db } from '../firebase';
 type View = 'main' | 'archive' | 'detail';
 
 function RenderContent({ item }: { item: any }) {
-  if (item.contentBlocks && Array.isArray(item.contentBlocks)) {
+  // NEW EDITOR ka data - x,y wala free canvas
+  if (item.contentBlocks && Array.isArray(item.contentBlocks) && item.contentBlocks.length > 0) {
+    const hasPosition = item.contentBlocks.some((b: any) => typeof b.x === 'number');
+
+    // Agar drag wala data hai to free canvas jaise dikhao
+    if (hasPosition) {
+      return (
+        <div className="relative min-h-[500px] w-full overflow-visible">
+          {item.contentBlocks.map((block: any, i: number) => {
+            const isImage = block.type === 'image';
+            const src = block.content || block.url;
+            const left = block.x?? 0;
+            const top = block.y?? 0;
+            const width = block.w || block.width || 320;
+
+            if (isImage && src) {
+              return (
+                <div key={i} className="absolute" style={{ left, top, width }}>
+                  <div className="overflow-hidden rounded-xl border border-[#eeeaf3] bg-white shadow-sm">
+                    <img src={src} alt={block.alt || 'Achievement'} className="w-full h-auto object-cover" />
+                    {block.caption && <p className="bg-[#faf8fd] px-3 py-2 text-[10px] text-[#9a8ea2]">{block.caption}</p>}
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div key={i} className="absolute" style={{ left, top, width }}>
+                <p className="text-[13px] leading-6 text-[#40334e] whitespace-pre-wrap bg-white/80 backdrop-blur-sm p-1 rounded-lg">{block.content}</p>
+              </div>
+            );
+          })}
+          {/* Spacer taki niche ka copyright kat na jaye */}
+          <div className="h-[600px] pointer-events-none" />
+        </div>
+      );
+    }
+
+    // Purana wala normal list wala data - usko waise hi dikhao
     return (
       <div className="space-y-4">
         {item.contentBlocks.map((block: any, i: number) => {
           if (block.type === 'image') {
+            const src = block.content || block.url;
             return (
               <div key={i} className="overflow-hidden rounded-xl border border-[#eeeaf3]">
-                <img src={block.url} alt={block.alt || 'Achievement'} style={{ width: `${block.width || 100}%`, transform: `rotate(${block.rotate || 0}deg)`, objectFit: block.fit || 'cover' }} className="mx-auto" />
+                <img src={src} alt={block.alt || 'Achievement'} style={{ width: `${block.width || 100}%`, transform: `rotate(${block.rotate || 0}deg)`, objectFit: block.fit || 'cover' }} className="mx-auto" />
                 {block.caption && <p className="bg-[#faf8fd] px-3 py-2 text-[10px] text-[#9a8ea2]">{block.caption}</p>}
               </div>
             )
@@ -81,11 +119,10 @@ export function Achievements() {
             src: url('/fonts/Santrio.woff2') format('woff2');
             font-display: swap;
           }
-         .font-santrio { font-family: 'Santrio', serif; }
+        .font-santrio { font-family: 'Santrio', serif; }
         `}</style>
         <button onClick={()=>setView('archive')} className="flex items-center gap-2 text-[11px] font-semibold text-[#704ca5] mb-6"><ArrowLeft size={14}/> Back to archive</button>
         <p className="ps-mono text-[9px] text-[#8068a9]">{selected.type} • {selected.year}</p>
-        {/* YEHI HEADLINE CHANGE KIYA - SANTRIO + CHOTI SIZE */}
         <h1 className="font-santrio mt-3 text-[24px] md:text-[28px] leading-[1.1] tracking-[-.02em] text-[#332840] max-w-[700px] font-normal">{selected.title}</h1>
         {selected.subtitle && <p className="mt-3 max-w-[600px] text-[13px] leading-6 text-[#81758d]">{selected.subtitle}</p>}
         <div className="mt-6 flex items-center gap-3">
@@ -93,7 +130,7 @@ export function Achievements() {
           {selected.link && <a href={selected.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f0fb] px-3 py-1 text-[11px] font-medium text-[#5e428f] hover:bg-[#ede7f7]">Official source <ExternalLink size={12}/></a>}
         </div>
 
-        <div className="ps-panel mt-8 rounded-2xl p-6 md:p-8">
+        <div className="ps-panel mt-8 rounded-2xl p-6 md:p-8 overflow-visible">
           <p className="ps-mono text-[9px] text-[#907fa0]">VERIFIED RECORD - FULL STORY</p>
           <div className="mt-4"><RenderContent item={selected} /></div>
           <div className="mt-6 flex items-center justify-between border-t border-[#eeeaf3] pt-4"><span className="text-[10px] text-[#9b8fa2]">Verified record</span><Check size={15} className="text-[#7c5da5]" /></div>
