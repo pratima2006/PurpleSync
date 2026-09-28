@@ -4,14 +4,12 @@ import { db } from '../../firebase';
 import { Pencil, Trash2, Eye, EyeOff, Plus, Save, X, Image as ImageIcon, Type, Link2 } from 'lucide-react';
 import { achievementItems as defaults } from '../../components/data';
 
-// YAHI TERA FULL SCREEN EDITOR HAI - AB ISI FILE ME HAI
 function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Word jaisa - kahin bhi click karo toh text box ban jayega
   const handleCanvasClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('[data-block]')) return;
     if (!canvasRef.current) return;
@@ -30,7 +28,6 @@ function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
     setForm({...form, contentBlocks: [...(form.contentBlocks || []), newBlock] });
   };
 
-  // Double click = drag enable
   const handleDoubleClick = (id: string, e: any) => {
     e.stopPropagation();
     setDragId(id);
@@ -89,7 +86,6 @@ function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
 
   return (
     <div className="fixed inset-0 z-[999] bg-[#f5f3ff] flex flex-col">
-      {/* Top - yaha pe hi Title, Subtitle, Date, Link sab edit hoga - jaise tune bola */}
       <div className="bg-white border-b p-3 flex flex-col gap-2">
         <div className="flex justify-between items-center">
           <h2 className="text-[11px] font-bold tracking-widest">DESKTOP FULL SCREEN - EDIT ANYWHERE</h2>
@@ -115,7 +111,6 @@ function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
         <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
       </div>
 
-      {/* WORD JAISA CANVAS */}
       <div className="flex-1 overflow-auto p-4 bg-[#eeebf5]" style={{ touchAction: 'none' }}>
         <div
           ref={canvasRef}
@@ -124,17 +119,15 @@ function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
           onPointerUp={handlePointerUp}
           className="relative mx-auto bg-white min-h-[900px] w-full max-w-[800px] rounded-xl shadow-sm border"
         >
-          {/* Faded Word lines - jaha click karogi waha type kar sakti ho */}
           <div className="absolute inset-0 pointer-events-none rounded-xl opacity-[0.07]" style={{ backgroundImage: `repeating-linear-gradient(transparent 0 23px, #5e428f 24px)`, backgroundPosition: '0 80px' }} />
 
           <div className="relative p-6 pt-4">
             <p className="text-[8px] tracking-[0.2em] text-[#b8aec7]">VERIFIED RECORD · FULL STORY · PREVIEW LIKE YOUR PIC</p>
             {form.link && <p className="text-[10px] text-[#5e428f] break-all mt-1">{form.link}</p>}
             <div className="mt-6 h-px bg-[#f0e6f8]" />
-            <p className="mt-3 text-[10px] text-[#b8aec7]">💡 Tip: Kahin bhi click karo -> text likho. Pic pe double-click karo -> fir drag karo. Text apne aap pic ke side me chala jayega.</p>
+            <p className="mt-3 text-[10px] text-[#b8aec7]">Tip: Kahin bhi click karo to text likho. Pic pe double-click karo fir drag karo. Text apne aap pic ke side me chala jayega.</p>
           </div>
 
-          {/* Blocks - draggable */}
           {(form.contentBlocks || []).map((block: any) => (
             <div
               key={block.id}
@@ -179,7 +172,6 @@ function FullScreenEditor({ form, setForm, onSave, onClose, isEditing }: any) {
   );
 }
 
-// TERA MAIN ADMIN - 1ST PIC WALA BOX SAME HAI, KUCH NAHI CHEDA
 export function AchievementsAdmin() {
   const [items, setItems] = useState<any[]>([]);
   const [form, setForm] = useState({
