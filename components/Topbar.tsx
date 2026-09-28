@@ -48,7 +48,6 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps) {
 
   return (
     <>
-      {/* TOPBAR FIX - ab proper topbar lagega, nav jaisa nahi */}
       <header className="flex h-[60px] items-center justify-between rounded-full border border-[#ece6f3] bg-white px-4 md:px-5 shadow-[0_2px_16px_rgba(94,66,143,0.06)] mt-3 mx-3 md:mx-4">
         <div className="flex items-center gap-2">
           <BrandMark compact />
@@ -62,6 +61,16 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps) {
           <button type="button" onClick={onSearch} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f8f5ff] text-[#7b6a93] hover:bg-[#efe8fb]"><Search size={17} /></button>
           <button type="button" className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#f8f5ff] text-[#7b6a93] hover:bg-[#efe8fb]"><Bell size={17} /><span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-[#aa8be8]" /></button>
           <button type="button" onClick={() => onNavigate('links')} className="hidden sm:flex h-9 items-center gap-2 rounded-full bg-white border border-[#ece6f3] px-3.5 text-[11px] font-medium text-[#4c425c] whitespace-nowrap hover:bg-[#f8f5ff]"><Globe2 size={14} /> Official</button>
+
+          {/* NEW - PROFILE AVATAR - added without breaking anything */}
+          <button
+            type="button"
+            onClick={() => onNavigate('profile' as PageKey)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#c7b1ec] to-[#8b5cf6] text-[12px] font-semibold text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)] border-2 border-white hover:scale-105 transition-transform"
+            aria-label="Profile"
+          >
+            AR
+          </button>
 
           <button type="button" onClick={toggleMenu} className="flex h-9 w-9 items-center justify-center rounded-full bg-[#5e428f] text-white transition-all duration-300 hover:bg-[#4d3678] shadow-[0_4px_12px_rgba(94,66,143,0.25)]">
             <span className={`transition-all duration-300 ${menuOpen? 'rotate-90 scale-90' : 'rotate-0 scale-100'}`}>
