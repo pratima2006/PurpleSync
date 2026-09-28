@@ -16,6 +16,7 @@ import { Settings } from '../app/Settings';
 import { FAQ } from '../app/FAQ';
 import { Help } from '../app/Help';
 import { PaletteOfMemories } from '../app/PaletteOfMemories';
+import { Profile } from '../app/Profile'; // <-- NEW 1
 
 const validPages: PageKey[] = [
   'home',
@@ -31,6 +32,7 @@ const validPages: PageKey[] = [
   'faq',
   'help',
   'palette',
+  'profile', // <-- NEW 2
 ];
 
 function pageFromPath(pathname: string): PageKey {
@@ -39,12 +41,10 @@ function pageFromPath(pathname: string): PageKey {
   return validPages.includes(value)? value : 'home';
 }
 
-// SILENT AUTO UPDATE - FIXED - ab pakka kaam karega
 function useSilentUpdate(){
   useEffect(()=>{
     let lastHtmlSnapshot = '';
     let lastEtagSnapshot = '';
-
     const doReload = async () => {
       try{
         if('caches' in window){
@@ -54,22 +54,17 @@ function useSilentUpdate(){
       }catch{}
       window.location.reload();
     };
-
     const checkForUpdate = async () => {
       try{
-        // Hum seedha index.html ka content check karenge - sabse reliable
         const res = await fetch(`/index.html?_=${Date.now()}`, { cache: 'no-store' });
         const html = await res.text();
         const etag = res.headers.get('etag') || '';
-
         if(!lastHtmlSnapshot){
           lastHtmlSnapshot = html;
           lastEtagSnapshot = etag;
           if(etag) localStorage.setItem('app_etag', etag);
           return;
         }
-
-        // Agar etag badla ya html badla = naya deploy
         const storedEtag = localStorage.getItem('app_etag');
         if((etag && storedEtag && etag!== storedEtag) || (html && html!== lastHtmlSnapshot && html.length > 500)){
           if(etag) localStorage.setItem('app_etag', etag);
@@ -79,13 +74,11 @@ function useSilentUpdate(){
         }
       }catch{}
     };
-
     checkForUpdate();
-    const id = setInterval(checkForUpdate, 15000); // har 15 sec
+    const id = setInterval(checkForUpdate, 15000);
     const onVisible = () => { if(document.visibilityState==='visible') checkForUpdate(); };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', checkForUpdate);
-
     return ()=>{
       clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
@@ -105,9 +98,7 @@ function Shell() {
     const handlePopState = () => setPage(pageFromPath(window.location.pathname));
     window.addEventListener('popstate', handlePopState);
     const params = new URLSearchParams(window.location.search);
-    if (params.get('admin') === 'true') {
-      setPage('admin');
-    }
+    if (params.get('admin') === 'true') setPage('admin');
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
@@ -133,13 +124,8 @@ function Shell() {
     if (page === 'faq') return <FAQ />;
     if (page === 'help') return <Help />;
     if (page === 'palette') return <PaletteOfMemories />;
-    return (
-      <Home
-        onNavigate={navigate}
-        dismissed={dismissed}
-        onDismiss={() => setDismissed(true)}
-      />
-    );
+    if (page === 'profile') return <Profile onNavigate={navigate} />; // <-- NEW 3
+    return <Home onNavigate={navigate} dismissed={dismissed} onDismiss={() => setDismissed(true)} />;
   }, [page, dismissed]);
 
   const isUserAdmin = page === 'user-admin';
