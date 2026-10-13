@@ -16,7 +16,7 @@ import { Settings } from '../app/Settings';
 import { FAQ } from '../app/FAQ';
 import { Help } from '../app/Help';
 import { PaletteOfMemories } from '../app/PaletteOfMemories';
-import { Profile } from '../app/Profile'; // <-- NEW 1
+import Profile from '../app/Profile';
 
 const validPages: PageKey[] = [
   'home',
