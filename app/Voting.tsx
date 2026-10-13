@@ -21,11 +21,7 @@ function getTargetTime(item: any): number | null {
     const t = new Date(item.closeDate).getTime();
     if (!isNaN(t)) return t;
   }
-  if (item.votingDate) {
-    const t = new Date(item.votingDate).getTime();
-    if (!isNaN(t)) return t;
-  }
-  return null;
+  return null; // votingDate ko countdown me nahi lenge
 }
 
 function isEndingSoon(item: any): boolean {
@@ -38,7 +34,7 @@ function isEndingSoon(item: any): boolean {
 
 function formatTwoUnits(item: any) {
   const target = getTargetTime(item);
-  if (!target) return item.closes || 'TBD';
+  if (!target) return 'Soon';
   const diff = target - Date.now();
   if (diff <= 0) return 'Closed';
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -53,7 +49,7 @@ function formatTwoUnits(item: any) {
 
 function formatFourUnits(item: any) {
   const target = getTargetTime(item);
-  if (!target) return item.closes || '--';
+  if (!target) return 'Soon';
   const diff = target - Date.now();
   if (diff <= 0) return 'Closed';
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -70,20 +66,27 @@ function formatFourUnits(item: any) {
 
 export function Voting() {
   const [filter, setFilter] = useState<'all' | 'open' | 'ended' | 'upcoming' | 'endingSoon'>('all');
-  const [ready, setReady] = useState<any[]>([]);
+  const [ready, setReady] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem('ps_saved_votes') || '[]'); } catch { return []; }
+  });
   const [expanded, setExpanded] = useState<any>(null);
   const [seconds, setSeconds] = useState(18 * 3600 + 42 * 60 + 9);
   const [allItems, setAllItems] = useState<VotingItem[]>([]);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    localStorage.setItem('ps_saved_votes', JSON.stringify(ready));
+  }, [ready]);
+
+  useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
     const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
       const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any))
-        // DELETE DEMO BOXES PERMANENTLY
-       .filter((it:any)=>{
+      .filter((it:any)=>{
           const title = (it.title || '').toLowerCase();
-          return!title.includes('global fan choice') &&!title.includes('artist of the summer');
+          if(title.includes('global fan choice') || title.includes('artist of the summer')) return false;
+          if(it.isHidden) return false; // HIDE WALA LOGIC
+          return true;
         });
       setAllItems(firestoreItems);
     });
@@ -114,19 +117,15 @@ export function Voting() {
     return s===filter;
   });
 
+  // NEXT CLOSES IN - sabse najdeek end date wali
   const closest = useMemo(() => {
-    const openWithDate = allItems.filter((i: any) => {
-      const s = (i.status||'').toLowerCase();
-      return (s === 'open' || s==='active' || s==='live') && getTargetTime(i);
-    });
-    if (openWithDate.length > 0) {
-      openWithDate.sort((a: any, b: any) => (getTargetTime(a) || 0) - (getTargetTime(b) || 0));
-      return openWithDate[0];
+    const withEnd = allItems.filter((i: any) => getTargetTime(i));
+    if (withEnd.length > 0) {
+      withEnd.sort((a: any, b: any) => (getTargetTime(a) || 0) - (getTargetTime(b) || 0));
+      const future = withEnd.find((i:any)=> (getTargetTime(i) || 0) > Date.now());
+      return future || withEnd[0];
     }
-    return allItems.find((i: any) => {
-      const s=(i.status||'').toLowerCase();
-      return s==='open' || s==='active' || s==='live';
-    }) || allItems[0];
+    return allItems[0];
   }, [allItems, tick]);
 
   useEffect(() => {
@@ -136,6 +135,7 @@ export function Voting() {
 
   const countdown = useMemo(() => {
     if (closest && getTargetTime(closest)) return formatFourUnits(closest);
+    if (closest) return 'Soon';
     return `${String(Math.floor(seconds / 3600)).padStart(2, '0')}h ${String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')}m ${String(seconds % 60).padStart(2, '0')}s`;
   }, [closest, seconds, tick]);
 
@@ -172,9 +172,9 @@ export function Voting() {
     let base = 'ps-panel ps-panel-hover rounded-2xl p-5 md:p-6 cursor-pointer ';
     if(isExpanded) base += 'ring-1 ring-[#d1c0ea] ';
     if(endingSoon) return base + 'border-red-200 bg-[#fff5f5]';
-    if(status==='ended' || status==='closed') return base + 'bg-[#f6f5f7] border-[#e8e4ec] opacity-[0.92]'; // halka gray
-    if(status==='upcoming') return base + 'bg-[#fefce8] border-[#f5e7a0]'; // fika yellow
-    if(status==='open' || status==='active' || status==='live') return base + 'bg-[#f0f9ff] border-[#bae6fd]'; // halka sky blue
+    if(status==='ended' || status==='closed') return base + 'bg-[#f6f5f7] border-[#e8e4ec]';
+    if(status==='upcoming') return base + 'bg-[#fefce8] border-[#f5e7a0]';
+    if(status==='open' || status==='active' || status==='live') return base + 'bg-[#f0f9ff] border-[#bae6fd]';
     return base + 'bg-white';
   }
 
@@ -192,7 +192,8 @@ export function Voting() {
             <Clock3 size={15} className="text-[#8068a9]" />
           </div>
           <p className="mt-3 font-mono text-[20px] font-medium tracking-[-.04em] text-[#4f3876]">{countdown}</p>
-          <p className="mt-1 text-[10px] text-[#887b99] truncate">{closest? `${closest.title} · ${closest.platform}` : 'No active voting'}</p>
+          <p className="mt-1 text-[11px] font-semibold text-[#4f3876] truncate">{closest? `${closest.title}` : 'No active voting'}</p>
+          <p className="text-[10px] text-[#887b99] truncate">{closest?.platform || ''}</p>
         </div>
       </div>
 
@@ -211,14 +212,7 @@ export function Voting() {
 
       <div className="mt-10 flex gap-3 overflow-x-auto ps-scroll-hide whitespace-nowrap pb-2 -mx-1 px-1">
         {(['all', 'open', 'ended', 'upcoming', 'endingSoon'] as const).map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setFilter(item)}
-            className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${
-              filter === item? 'border-[#60438f] bg-[#60438f] text-white' : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'
-            }`}
-          >
+          <button key={item} type="button" onClick={() => setFilter(item)} className={`shrink-0 rounded-full border px-6 py-2.5 text-[13px] font-medium capitalize transition-colors ${filter === item? 'border-[#60438f] bg-[#60438f] text-white' : 'border-[#ded6e9] bg-white text-[#766a84] hover:border-[#b9a5d7]'}`}>
             {item === 'all'? 'All Windows' : item === 'open'? 'Open Now' : item === 'ended'? 'Recently Ended' : item === 'endingSoon'? `Ending Soon (${endingSoonItems.length})` : 'Upcoming'}
           </button>
         ))}
@@ -230,19 +224,21 @@ export function Voting() {
           const isExpanded = expanded === item.id;
           const endingSoon = isEndingSoon(item);
           const isLive = ['open','active','live'].includes((item.status||'').toLowerCase());
+          const statusLower = (item.status||'').toLowerCase();
           return (
             <article key={item.id} onClick={() => setExpanded(isExpanded? null : item.id)} className={getCardStyle(item,isExpanded,endingSoon)}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${isLive? 'bg-[#38bdf8]' : (item.status==='ended' || item.status==='closed')? 'bg-[#b3a9bc]' : 'bg-[#eab308]'}`} />
-                    <span className="ps-mono text-[9px] text-[#8e819c]">{item.platform}</span>
+                    <span className={`h-2 w-2 rounded-full ${isLive? 'bg-[#38bdf8]' : statusLower==='ended' || statusLower==='closed'? 'bg-[#b3a9bc]' : 'bg-[#eab308]'}`} />
+                    <span className="ps-mono text-[11px] font-medium text-[#6b5a80]">{item.platform}</span>
                     {endingSoon && <span className="ps-mono text-[8px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">ENDING SOON</span>}
+                    <span className={`ps-mono text-[8px] px-2 py-0.5 rounded-full capitalize ${isLive?'bg-sky-100 text-sky-700': statusLower==='upcoming'?'bg-yellow-100 text-yellow-700':'bg-gray-100 text-gray-600'}`}>{item.status}</span>
                   </div>
-                  <h2 className={`mt-3 font-semibold text-[#3d324b] ${isExpanded? 'text-[13px] opacity-80' : 'text-[16px]'}`}>{item.title}</h2>
+                  <h2 className={`mt-3 font-semibold text-[#3d324b] ${isExpanded? 'text-[14px] opacity-80' : 'text-[17px] leading-tight'}`}>{item.title}</h2>
                   {item.votingDate && <p className="text-[10px] text-gray-400 mt-1">📅 {item.votingDate}</p>}
                 </div>
-                <button type="button" onClick={(e) => { e.stopPropagation(); setReady((current) => current.includes(item.id)? current.filter((id) => id!== item.id) : [...current, item.id]); }} className={`rounded-lg border p-2 ${ready.includes(item.id)? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]' : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'}`}>
+                <button title={ready.includes(item.id)? 'Saved to My Desk' : 'Save to My Desk'} type="button" onClick={(e) => { e.stopPropagation(); setReady((current:any) => current.includes(item.id)? current.filter((id:any) => id!== item.id) : [...current, item.id]); }} className={`rounded-lg border p-2 ${ready.includes(item.id)? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]' : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'}`}>
                   {ready.includes(item.id)? <CircleCheck size={16} /> : <Flag size={16} />}
                 </button>
               </div>
