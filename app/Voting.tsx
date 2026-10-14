@@ -36,7 +36,7 @@ function isEndingSoon(item: any): boolean {
 function formatTwoUnits(item: any) {
   const target = getTargetTime(item);
   const statusLabel = (item.status || 'Open').charAt(0).toUpperCase() + (item.status || 'Open').slice(1).toLowerCase();
-  if (!target) return statusLabel; // YAHI FIX HAI - Soon ki jagah Status Title
+  if (!target) return statusLabel;
   const diff = target - Date.now();
   if (diff <= 0) return 'Closed';
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -75,7 +75,7 @@ export function Voting() {
   const [seconds, setSeconds] = useState(18 * 3600 + 42 * 60 + 9);
   const [allItems, setAllItems] = useState<VotingItem[]>([]);
   const [tick, setTick] = useState(0);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{type:'success'|'error', msg:string}|null>(null);
 
   useEffect(() => {
     localStorage.setItem('ps_saved_votes', JSON.stringify(ready));
@@ -83,7 +83,7 @@ export function Voting() {
 
   useEffect(() => {
     if (toast) {
-      const t = setTimeout(() => setToast(null), 2500);
+      const t = setTimeout(() => setToast(null), 3000);
       return () => clearTimeout(t);
     }
   }, [toast]);
@@ -91,13 +91,26 @@ export function Voting() {
   useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
     const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
-      const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any))
-     .filter((it:any)=>{
+      let firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any))
+    .filter((it:any)=>{
           const title = (it.title || '').toLowerCase();
           if(title.includes('global fan choice') || title.includes('artist of the summer')) return false;
           if(it.isHidden) return false;
           return true;
         });
+      firestoreItems.sort((a:any,b:any)=>{
+        if(a.order!==undefined && b.order!==undefined) return a.order - b.order;
+        if(a.order!==undefined) return -1;
+        if(b.order!==undefined) return 1;
+        const ta = getTargetTime(a);
+        const tb = getTargetTime(b);
+        if (ta && tb) return ta - tb;
+        if (ta &&!tb) return -1;
+        if (!ta && tb) return 1;
+        const ca = new Date(a.createdAt||0).getTime();
+        const cb = new Date(b.createdAt||0).getTime();
+        return ca - cb;
+      });
       setAllItems(firestoreItems);
     });
     return () => {
@@ -106,17 +119,7 @@ export function Voting() {
     };
   }, []);
 
-  const sortedItems = useMemo(() => {
-    return [...allItems].sort((a: any, b: any) => {
-      const ta = getTargetTime(a);
-      const tb = getTargetTime(b);
-      if (ta && tb) return ta - tb;
-      if (ta &&!tb) return -1;
-      if (!ta && tb) return 1;
-      return 0;
-    });
-  }, [allItems, tick]);
-
+  const sortedItems = useMemo(() => allItems, [allItems, tick]);
   const endingSoonItems = useMemo(() => sortedItems.filter(isEndingSoon), [sortedItems, tick]);
 
   const filtered = sortedItems.filter((item) => {
@@ -181,10 +184,14 @@ export function Voting() {
     const isSaved = ready.includes(item.id);
     if(isSaved){
       setReady((current:any) => current.filter((id:any) => id!== item.id));
-      setToast(`Removed "${item.title}" from your desk`);
+      setToast({type:'success', msg:`Removed "${item.title}" from your desk`});
     } else {
+      if(ready.length>=2){
+        setToast({type:'error', msg:`Limit reached: You can only pin 2 votings to Home Live. Remove one to add "${item.title}"`});
+        return;
+      }
       setReady((current:any) => [...current, item.id]);
-      setToast(`Saved "${item.title}" to your desk`);
+      setToast({type:'success', msg:`Saved "${item.title}" to Home Live Voting`});
     }
   };
 
@@ -201,13 +208,19 @@ export function Voting() {
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
-      {/* Toast Popup - App UI se match */}
       {toast && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-3 bg-[#332840] text-white px-5 py-3 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-white/10">
-            <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center"><BookmarkCheck size={14} className="text-white"/></div>
-            <p className="text-[12px] font-medium tracking-[-0.01em] max-w-[260px] truncate">{toast}</p>
-          </div>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] w-[92%] max-w-[420px] pointer-events-none">
+          {toast.type==='success'? (
+            <div className="flex items-center gap-3 bg-[#332840] text-white px-5 py-3 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-white/10 pointer-events-auto">
+              <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center"><BookmarkCheck size={14} className="text-white"/></div>
+              <p className="text-[12px] font-medium truncate">{toast.msg}</p>
+            </div>
+          ):(
+            <div className="flex items-center gap-3 bg-[#fef2f2]/95 backdrop-blur border border-red-300 px-5 py-3 rounded-2xl shadow-[0_10px_30px_rgba(239,68,68,0.15)] pointer-events-auto">
+              <div className="h-7 w-7 rounded-full bg-red-100 flex items-center justify-center text-red-600"><AlertTriangle size={14} className="text-amber-500"/></div>
+              <p className="text-[12px] font-medium text-red-700 leading-4">{toast.msg}</p>
+            </div>
+          )}
         </div>
       )}
 
