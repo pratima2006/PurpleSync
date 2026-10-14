@@ -17,10 +17,12 @@ import { FAQ } from '../app/FAQ';
 import { Help } from '../app/Help';
 import { PaletteOfMemories } from '../app/PaletteOfMemories';
 import Profile from '../app/Profile';
+import { UserAddVoting } from '../components/UserAddVoting';
 
 const validPages: PageKey[] = [
   'home',
   'voting',
+  'userAddVoting',
   'schedule',
   'achievements',
   'updates',
@@ -32,7 +34,7 @@ const validPages: PageKey[] = [
   'faq',
   'help',
   'palette',
-  'profile', // <-- NEW 2
+  'profile',
 ];
 
 function pageFromPath(pathname: string): PageKey {
@@ -112,7 +114,8 @@ function Shell() {
   };
 
   const content = useMemo(() => {
-    if (page === 'voting') return <Voting />;
+    if (page === 'voting') return <Voting onNavigate={navigate as any} />;
+    if (page === 'userAddVoting') return <UserAddVoting onBack={()=>navigate('voting')} />;
     if (page === 'schedule') return <Schedule />;
     if (page === 'achievements') return <Achievements />;
     if (page === 'updates') return <Updates />;
@@ -124,19 +127,20 @@ function Shell() {
     if (page === 'faq') return <FAQ />;
     if (page === 'help') return <Help />;
     if (page === 'palette') return <PaletteOfMemories />;
-    if (page === 'profile') return <Profile onNavigate={navigate} />; // <-- NEW 3
+    if (page === 'profile') return <Profile onNavigate={navigate} />;
     return <Home onNavigate={navigate} dismissed={dismissed} onDismiss={() => setDismissed(true)} />;
   }, [page, dismissed]);
 
   const isUserAdmin = page === 'user-admin';
+  const isUserAddVoting = page === 'userAddVoting';
 
   return (
     <div className="ps-shell">
       <main className="ps-main ml-0">
-        {!isUserAdmin && <Topbar page={page} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />}
+        {!isUserAdmin && <Topbar page={page as any} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />}
         {content}
       </main>
-      {!isUserAdmin && <MobileNav page={page} onNavigate={navigate} />}
+      {!isUserAdmin &&!isUserAddVoting && <MobileNav page={page} onNavigate={navigate} />}
       {searchOpen &&!isUserAdmin && <SearchPanel onClose={() => setSearchOpen(false)} onNavigate={navigate} />}
     </div>
   );
