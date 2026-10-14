@@ -6,6 +6,7 @@ import {
   Flag,
   ShieldCheck,
   AlertTriangle,
+  BookmarkCheck,
 } from 'lucide-react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -21,7 +22,7 @@ function getTargetTime(item: any): number | null {
     const t = new Date(item.closeDate).getTime();
     if (!isNaN(t)) return t;
   }
-  return null; // votingDate ko countdown me nahi lenge
+  return null;
 }
 
 function isEndingSoon(item: any): boolean {
@@ -34,7 +35,8 @@ function isEndingSoon(item: any): boolean {
 
 function formatTwoUnits(item: any) {
   const target = getTargetTime(item);
-  if (!target) return 'Soon';
+  const statusLabel = (item.status || 'Open').charAt(0).toUpperCase() + (item.status || 'Open').slice(1).toLowerCase();
+  if (!target) return statusLabel; // YAHI FIX HAI - Soon ki jagah Status Title
   const diff = target - Date.now();
   if (diff <= 0) return 'Closed';
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -49,7 +51,7 @@ function formatTwoUnits(item: any) {
 
 function formatFourUnits(item: any) {
   const target = getTargetTime(item);
-  if (!target) return 'Soon';
+  if (!target) return (item.status || 'Open').toUpperCase();
   const diff = target - Date.now();
   if (diff <= 0) return 'Closed';
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -73,19 +75,27 @@ export function Voting() {
   const [seconds, setSeconds] = useState(18 * 3600 + 42 * 60 + 9);
   const [allItems, setAllItems] = useState<VotingItem[]>([]);
   const [tick, setTick] = useState(0);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('ps_saved_votes', JSON.stringify(ready));
   }, [ready]);
 
   useEffect(() => {
+    if (toast) {
+      const t = setTimeout(() => setToast(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
+
+  useEffect(() => {
     const t = setInterval(() => setTick(v => v + 1), 1000);
     const unsub = onSnapshot(collection(db, "votingItems"), (snap) => {
       const firestoreItems = snap.docs.map(d => ({ id: d.id,...d.data() } as any))
-      .filter((it:any)=>{
+     .filter((it:any)=>{
           const title = (it.title || '').toLowerCase();
           if(title.includes('global fan choice') || title.includes('artist of the summer')) return false;
-          if(it.isHidden) return false; // HIDE WALA LOGIC
+          if(it.isHidden) return false;
           return true;
         });
       setAllItems(firestoreItems);
@@ -117,7 +127,6 @@ export function Voting() {
     return s===filter;
   });
 
-  // NEXT CLOSES IN - sabse najdeek end date wali
   const closest = useMemo(() => {
     const withEnd = allItems.filter((i: any) => getTargetTime(i));
     if (withEnd.length > 0) {
@@ -135,7 +144,7 @@ export function Voting() {
 
   const countdown = useMemo(() => {
     if (closest && getTargetTime(closest)) return formatFourUnits(closest);
-    if (closest) return 'Soon';
+    if (closest) return (closest.status || 'Soon').toUpperCase();
     return `${String(Math.floor(seconds / 3600)).padStart(2, '0')}h ${String(Math.floor((seconds % 3600) / 60)).padStart(2, '0')}m ${String(seconds % 60).padStart(2, '0')}s`;
   }, [closest, seconds, tick]);
 
@@ -148,7 +157,7 @@ export function Voting() {
     const appStore = item.appStoreLink;
     const type = item.voteType || 'website';
     if (!link) {
-      alert('Is voting ka link Admin ne nahi dala');
+      alert('Voting link not added by admin');
       return;
     }
     if (type === 'app') {
@@ -167,6 +176,18 @@ export function Voting() {
     }
   };
 
+  const handleSave = (item:any, e:any)=>{
+    e.stopPropagation();
+    const isSaved = ready.includes(item.id);
+    if(isSaved){
+      setReady((current:any) => current.filter((id:any) => id!== item.id));
+      setToast(`Removed "${item.title}" from your desk`);
+    } else {
+      setReady((current:any) => [...current, item.id]);
+      setToast(`Saved "${item.title}" to your desk`);
+    }
+  };
+
   const getCardStyle = (item:any, isExpanded:boolean, endingSoon:boolean)=>{
     const status = (item.status||'').toLowerCase();
     let base = 'ps-panel ps-panel-hover rounded-2xl p-5 md:p-6 cursor-pointer ';
@@ -180,6 +201,16 @@ export function Voting() {
 
   return (
     <div className="ps-page-enter ps-content py-8 md:py-12">
+      {/* Toast Popup - App UI se match */}
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3 bg-[#332840] text-white px-5 py-3 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.2)] border border-white/10">
+            <div className="h-7 w-7 rounded-full bg-white/15 flex items-center justify-center"><BookmarkCheck size={14} className="text-white"/></div>
+            <p className="text-[12px] font-medium tracking-[-0.01em] max-w-[260px] truncate">{toast}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col justify-between gap-5 md:flex-row md:items-end">
         <div>
           <p className="ps-mono text-[9px] text-[#8068a9]">THE VOTING DESK</p>
@@ -224,27 +255,25 @@ export function Voting() {
           const isExpanded = expanded === item.id;
           const endingSoon = isEndingSoon(item);
           const isLive = ['open','active','live'].includes((item.status||'').toLowerCase());
-          const statusLower = (item.status||'').toLowerCase();
           return (
             <article key={item.id} onClick={() => setExpanded(isExpanded? null : item.id)} className={getCardStyle(item,isExpanded,endingSoon)}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${isLive? 'bg-[#38bdf8]' : statusLower==='ended' || statusLower==='closed'? 'bg-[#b3a9bc]' : 'bg-[#eab308]'}`} />
+                    <span className={`h-2 w-2 rounded-full ${isLive? 'bg-[#38bdf8]' : (item.status==='ended' || item.status==='closed')? 'bg-[#b3a9bc]' : 'bg-[#eab308]'}`} />
                     <span className="ps-mono text-[11px] font-medium text-[#6b5a80]">{item.platform}</span>
                     {endingSoon && <span className="ps-mono text-[8px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full">ENDING SOON</span>}
-                    <span className={`ps-mono text-[8px] px-2 py-0.5 rounded-full capitalize ${isLive?'bg-sky-100 text-sky-700': statusLower==='upcoming'?'bg-yellow-100 text-yellow-700':'bg-gray-100 text-gray-600'}`}>{item.status}</span>
                   </div>
                   <h2 className={`mt-3 font-semibold text-[#3d324b] ${isExpanded? 'text-[14px] opacity-80' : 'text-[17px] leading-tight'}`}>{item.title}</h2>
                   {item.votingDate && <p className="text-[10px] text-gray-400 mt-1">📅 {item.votingDate}</p>}
                 </div>
-                <button title={ready.includes(item.id)? 'Saved to My Desk' : 'Save to My Desk'} type="button" onClick={(e) => { e.stopPropagation(); setReady((current:any) => current.includes(item.id)? current.filter((id:any) => id!== item.id) : [...current, item.id]); }} className={`rounded-lg border p-2 ${ready.includes(item.id)? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]' : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5]'}`}>
+                <button title={ready.includes(item.id)? 'Saved to your desk' : 'Save to your desk'} type="button" onClick={(e) => handleSave(item,e)} className={`rounded-lg border p-2 transition ${ready.includes(item.id)? 'border-[#bca9d9] bg-[#f1eafb] text-[#704ca5]' : 'border-[#e1dbe9] text-[#988ca1] hover:text-[#704ca5] hover:bg-[#f9f5ff]'}`}>
                   {ready.includes(item.id)? <CircleCheck size={16} /> : <Flag size={16} />}
                 </button>
               </div>
               <div className="mt-7">
                 <p className="ps-mono text-[9px] text-[#95899d]">STATUS</p>
-                <p className={`mt-1 text-[13px] font-medium ${endingSoon? 'text-red-600' : isLive? 'text-[#0ea5e9]' : 'text-[#8f8495]'}`}>{formatTwoUnits(item)}</p>
+                <p className={`mt-1 text-[13px] font-medium capitalize ${endingSoon? 'text-red-600' : isLive? 'text-[#0ea5e9]' : 'text-[#8f8495]'}`}>{formatTwoUnits(item)}</p>
               </div>
               {isExpanded && (
                 <div className="mt-4 rounded-[16px] bg-[#f6f0fd] border border-[#e9dff6] p-4">
@@ -261,7 +290,7 @@ export function Voting() {
               <div className="mt-4 flex items-center justify-between gap-3">
                 <span className="text-[11px] text-[#958a9c] truncate">{isExpanded? 'Tap to collapse' : item.note || item.description?.slice(0,40) || 'Tap to see details'}</span>
                 <button type="button" onClick={(e) => handleOpen(item, e)} disabled={!isLive} className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-[11px] font-semibold transition ${isLive? 'bg-[#60438f] text-white hover:bg-[#4f3876]' : 'bg-[#ddd7e4] text-[#918797] cursor-not-allowed'}`}>
-                  {isLive? 'Vote Now' : item.status==='upcoming'? 'Upcoming' : 'Closed'} <ExternalLink size={14} />
+                  {isLive? 'Vote Now' : (item.status||'Closed')} <ExternalLink size={14} />
                 </button>
               </div>
             </article>
