@@ -2,7 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Bell, Bookmark, CalendarDays, Check, ChevronRight, Edit3, Heart, Settings2, Sparkles, Trophy, Vote, Zap, X, LogOut, Trash2, AlertTriangle, Image as ImageIcon } from 'lucide-react';
 import './Profile.css';
 import { auth, db, storage, googleProvider } from '../firebase';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signInWithPopup, updateProfile, signOut, deleteUser } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signInWithRedirect,
+  getRedirectResult,
+  updateProfile,
+  signOut,
+  deleteUser,
+  setPersistence,
+  browserLocalPersistence
+} from 'firebase/auth';
 import { doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
@@ -23,20 +34,44 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
   const [toast, setToast] = useState<string>('');
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login'|'signup'>('login');
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Auth state + redirect result for Google (phone + laptop)
   useEffect(()=>{
+    const initAuth = async () => {
+      try{
+        await setPersistence(auth, browserLocalPersistence);
+        const result = await getRedirectResult(auth);
+        if(result?.user){
+          setToast('Logged in with Google! 💜');
+          setTimeout(()=>setToast(''), 3000);
+        }
+      }catch(e){
+        console.log('Redirect check:', e);
+      }
+    };
+    initAuth();
+
     const unsub = onAuthStateChanged(auth, async (u)=>{
       setUser(u);
       if(u){
         setEditName(u.displayName||'');
         setPfpPreview(u.photoURL||'');
-        const snap = await getDoc(doc(db,'users',u.uid));
-        if(snap.exists()) setUserData(snap.data());
-        else { const data={ uid:u.uid, email:u.email, displayName:u.displayName||'Ari', createdAt:new Date().toISOString() }; await setDoc(doc(db,'users',u.uid), data); setUserData(data); }
+        try{
+          const snap = await getDoc(doc(db,'users',u.uid));
+          if(snap.exists()) setUserData(snap.data());
+          else {
+            const data={ uid:u.uid, email:u.email, displayName:u.displayName||'Ari', createdAt:new Date().toISOString() };
+            await setDoc(doc(db,'users',u.uid), data);
+            setUserData(data);
+          }
+        }catch(err){ console.log(err); }
+      } else {
+        setUserData(null);
       }
     });
     return ()=>unsub();
@@ -61,32 +96,108 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
       if(pfpFile){ const r=ref(storage,`pfp/${user.uid}`); await uploadBytes(r, pfpFile); photoURL=await getDownloadURL(r); }
       await updateProfile(user, { displayName: editName, photoURL });
       await setDoc(doc(db,'users',user.uid), { displayName: editName, photoURL, updatedAt:new Date().toISOString() }, {merge:true});
-      setToast('Profile saved successfully!'); setShowEdit(false); setPfpFile(null);
-    }catch(e:any){ alert(e.message); } setSaving(false); setTimeout(()=>setToast(''),3000);
+      setToast('Profile saved successfully!');
+      setShowEdit(false);
+      setPfpFile(null);
+      setUserData((prev:any)=> ({...prev, displayName: editName, photoURL}));
+    }catch(e:any){ alert(e.message); }
+    setSaving(false);
+    setTimeout(()=>setToast(''),3000);
   };
 
   const handleDeletePfp = async ()=>{
-    if(!user) return; try{ await deleteObject(ref(storage,`pfp/${user.uid}`)).catch(()=>{}); await updateProfile(user,{ photoURL:'' }); await setDoc(doc(db,'users',user.uid),{ photoURL:'' },{merge:true}); setPfpPreview(''); setToast('PFP deleted'); setTimeout(()=>setToast(''),3000); }catch(e:any){ alert(e.message); }
+    if(!user) return;
+    try{
+      await deleteObject(ref(storage,`pfp/${user.uid}`)).catch(()=>{});
+      await updateProfile(user,{ photoURL:'' });
+      await setDoc(doc(db,'users',user.uid),{ photoURL:'' },{merge:true});
+      setPfpPreview('');
+      setToast('PFP deleted');
+      setTimeout(()=>setToast(''),3000);
+    }catch(e:any){ alert(e.message); }
   };
 
   const handleAuth = async ()=>{
+    if(!email.trim() ||!password.trim()){
+      alert('Email and password required');
+      return;
+    }
+    if(password.length < 6){
+      alert('Password should be at least 6 characters');
+      return;
+    }
     try{
-      if(authMode==='signup') await createUserWithEmailAndPassword(auth,email,password);
-      else await signInWithEmailAndPassword(auth,email,password);
-      setShowAuth(false); setEmail(''); setPassword(''); setToast('Logged in successfully!');
+      setSaving(true);
+      await setPersistence(auth, browserLocalPersistence);
+      if(authMode==='signup'){
+        await createUserWithEmailAndPassword(auth,email,password);
+        setToast('Account created! 💜');
+      } else {
+        await signInWithEmailAndPassword(auth,email,password);
+        setToast('Logged in successfully!');
+      }
+      setShowAuth(false);
+      setEmail('');
+      setPassword('');
+      setTimeout(()=>setToast(''), 3000);
+    }catch(e:any){
+      let msg = e.message.replace('Firebase:','').trim();
+      if(msg.includes('auth/invalid-credential')) msg = 'Wrong email or password';
+      if(msg.includes('auth/email-already-in-use')) msg = 'Email already in use';
+      alert(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // FIXED: Google login - always redirect, works on phone + laptop
+  const handleGoogle = async ()=>{
+    try{
+      setSaving(true);
+      await setPersistence(auth, browserLocalPersistence);
+      googleProvider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithRedirect(auth, googleProvider);
+      // page will redirect to Google, no need to close popup
+    }catch(e:any){
+      setSaving(false);
+      alert(e.message);
+    }
+  };
+
+  const handleLogout = async ()=>{
+    try{
+      await signOut(auth);
+      onNavigate?.('home');
     }catch(e:any){ alert(e.message); }
   };
-  const handleGoogle = async ()=>{ try{ await signInWithPopup(auth, googleProvider); setShowAuth(false); }catch(e:any){ alert(e.message); } };
-  const handleLogout = async ()=>{ await signOut(auth); onNavigate?.('home'); };
+
   const handleDeleteAccount = async ()=>{
     if(!user) return; setDeleting(true);
     try{
       const q=query(collection(db,'userVotings'), where('ownerId','==',user.uid));
       const snap=await getDocs(q);
-      for(const d of snap.docs){ const data=d.data(); if(data.verificationStatus==='private' || data.visibility==='private'){ await deleteDoc(d.ref); } else { await updateDoc(d.ref,{ ownerName:'', ownerId:'deleted_'+user.uid, displayOption:'anonymous', addedByDisplay:'Verified' }); } }
+      for(const d of snap.docs){
+        const data=d.data();
+        if(data.verificationStatus==='private' || data.visibility==='private'){
+          await deleteDoc(d.ref);
+        } else {
+          await updateDoc(d.ref,{ ownerName:'', ownerId:'deleted_'+user.uid, displayOption:'anonymous', addedByDisplay:'Verified' });
+        }
+      }
       await deleteDoc(doc(db,'users',user.uid)).catch(()=>{});
-      await deleteUser(user); setShowDeleteConfirm(false); setToast('Account deletion completed successfully. You can still use the app.'); onNavigate?.('home');
-    }catch(e:any){ alert(e.message); } setDeleting(false);
+      await deleteUser(user);
+      setShowDeleteConfirm(false);
+      setToast('Account deletion completed successfully. You can still use the app.');
+      onNavigate?.('home');
+      setTimeout(()=>setToast(''), 4000);
+    }catch(e:any){
+      if(e.code === 'auth/requires-recent-login'){
+        alert('Please logout and login again to delete account (security check)');
+      } else {
+        alert(e.message);
+      }
+    }
+    setDeleting(false);
   };
 
   const isGuest =!user;
@@ -112,7 +223,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
             <button onClick={()=>{setAuthMode('signup'); setShowAuth(true);}} className="w-full bg-[#60438f] text-white py-3 rounded-full text-[13px] font-medium">Create an account</button>
             <button onClick={()=>{setAuthMode('login'); setShowAuth(true);}} className="w-full bg-white border border-[#e3dced] py-3 rounded-full text-[13px] font-medium">Login</button>
             <button onClick={()=>{setAuthMode('signup'); setShowAuth(true);}} className="w-full bg-white border border-[#e3dced] py-3 rounded-full text-[13px] font-medium">Sign in</button>
-            <button onClick={handleGoogle} className="w-full bg-white border border-[#e3dced] py-3 rounded-full text-[13px] font-medium">Continue with Google</button>
+            <button onClick={handleGoogle} disabled={saving} className="w-full bg-white border border-[#e3dced] py-3 rounded-full text-[13px] font-medium disabled:opacity-60">{saving?'Please wait...':'Continue with Google'}</button>
           </div>
         </div>
       ):(
@@ -180,10 +291,10 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
           <div className="bg-white rounded-2xl w-full max-w-[360px] p-6">
             <div className="flex justify-between items-center mb-4"><h3 className="font-semibold text-[14px]">{authMode==='login'?'Login':'Create Account'}</h3><button onClick={()=>setShowAuth(false)} className="h-7 w-7 bg-gray-100 rounded-full flex items-center justify-center"><X size={12}/></button></div>
             <div className="space-y-3">
-              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]"/>
-              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password (min 6)" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]"/>
-              <button onClick={handleAuth} className="w-full bg-[#60438f] text-white py-3 rounded-xl text-[13px] font-medium">{authMode==='login'?'Login':'Create Account'}</button>
-              <button onClick={handleGoogle} className="w-full bg-white border border-[#e3dced] py-3 rounded-xl text-[13px]">Continue with Google</button>
+              <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]" type="email" autoComplete="email"/>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password (min 6)" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]" autoComplete="current-password"/>
+              <button onClick={handleAuth} disabled={saving} className="w-full bg-[#60438f] text-white py-3 rounded-xl text-[13px] font-medium disabled:opacity-60">{saving?'Please wait...': authMode==='login'?'Login':'Create Account'}</button>
+              <button onClick={handleGoogle} disabled={saving} className="w-full bg-white border border-[#e3dced] py-3 rounded-xl text-[13px] disabled:opacity-60">Continue with Google</button>
               <button onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} className="w-full text-[11px] text-[#704ca5] mt-2">{authMode==='login'?'Need account? Sign up':'Already have account? Login'}</button>
             </div>
           </div>
