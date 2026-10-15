@@ -18,6 +18,8 @@ import { Help } from '../app/Help';
 import { PaletteOfMemories } from '../app/PaletteOfMemories';
 import Profile from '../app/Profile';
 import { UserAddVoting } from '../components/UserAddVoting';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const validPages: PageKey[] = [
   'home',
@@ -95,6 +97,66 @@ function Shell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Auth listener for notifications
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, (u)=> setCurrentUser(u));
+    return ()=> unsub();
+  },[]);
+
+  // Daily streak + Voting reminder notifications
+  useEffect(()=>{
+    if(!currentUser) return;
+
+    // Request permission once
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission().catch(()=>{});
+    }
+
+    const updateLastActive = ()=>{
+      localStorage.setItem('lastActive', Date.now().toString());
+    };
+
+    // Track activity
+    updateLastActive();
+    window.addEventListener('click', updateLastActive);
+    window.addEventListener('scroll', updateLastActive);
+    document.addEventListener('visibilitychange', updateLastActive);
+
+    const interval = setInterval(()=>{
+      if(!('Notification' in window)) return;
+      if(Notification.permission!== 'granted') return;
+      if(document.visibilityState!== 'visible') return;
+
+      const lastSeen = localStorage.getItem('lastActive');
+      const diff = Date.now() - Number(lastSeen || 0);
+      const twoHours = 2 * 60 * 60 * 1000;
+
+      // Only if user inactive for 2 hours
+      if(diff > twoHours){
+        const notif = new Notification('PurpleSync 💜', {
+          body: "You haven't voted in 2 hours! Don't miss your daily streak - spend 10 min in Voting tab ✨",
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: 'voting-reminder'
+        });
+        notif.onclick = ()=>{
+          window.focus();
+          notif.close();
+        };
+        // Reset to avoid spamming
+        localStorage.setItem('lastActive', Date.now().toString());
+      }
+    }, 60 * 60 * 1000); // Check every hour
+
+    return ()=>{
+      clearInterval(interval);
+      window.removeEventListener('click', updateLastActive);
+      window.removeEventListener('scroll', updateLastActive);
+      document.removeEventListener('visibilitychange', updateLastActive);
+    };
+  },[currentUser]);
 
   useEffect(() => {
     const handlePopState = () => setPage(pageFromPath(window.location.pathname));
@@ -111,6 +173,7 @@ function Shell() {
     setMobileMenuOpen(false);
     setSearchOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    localStorage.setItem('lastActive', Date.now().toString());
   };
 
   const content = useMemo(() => {
