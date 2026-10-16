@@ -36,6 +36,7 @@ const validPages: PageKey[] = [
   'user-admin',
   'settings',
   'faq',
+  'quiz',
   'help',
   'palette',
   'profile',
