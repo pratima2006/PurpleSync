@@ -20,185 +20,57 @@ import Profile from '../app/Profile';
 import { UserAddVoting } from '../components/UserAddVoting';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { QuizPage } from '../app/Quiz'; // <-- FIXED: tere screenshot ke hisab se app/ folder se
+import { QuizPage } from '../app/Quiz';
 
-const validPages: PageKey[] = [
-  'home',
-  'voting',
-  'userAddVoting',
-  'schedule',
-  'achievements',
-  'updates',
-  'links',
-  'members',
-  'admin',
-  'user-admin',
-  'settings',
-  'faq',
-  'help',
-  'palette',
-  'profile',
-  'quiz', // <-- YE ADD KIYA ISLIYE HOME PE JUMP HO RAHA THA
-  'quiz-admin',
-];
+const validPages: PageKey[] = ['home','voting','userAddVoting','schedule','achievements','updates','links','members','admin','user-admin','settings','faq','help','palette','profile','quiz','quiz-admin'];
 
-function pageFromPath(pathname: string): PageKey {
-  const raw = pathname.replace(/^\/+/, '').split('/')[0];
-  const value = raw as PageKey;
-  return validPages.includes(value)? value : 'home';
-}
+function pageFromPath(p:string): PageKey { const raw=p.replace(/^\/+/,'').split('/')[0] as PageKey; return validPages.includes(raw)? raw : 'home'; }
 
-function useSilentUpdate(){
-  useEffect(()=>{
-    let lastHtmlSnapshot = '';
-    let lastEtagSnapshot = '';
-    const doReload = async () => {
-      try{
-        if('caches' in window){
-          const keys = await caches.keys();
-          await Promise.all(keys.map(k => caches.delete(k)));
-        }
-      }catch{}
-      window.location.reload();
-    };
-    const checkForUpdate = async () => {
-      try{
-        const res = await fetch(`/index.html?_=${Date.now()}`, { cache: 'no-store' });
-        const html = await res.text();
-        const etag = res.headers.get('etag') || '';
-        if(!lastHtmlSnapshot){
-          lastHtmlSnapshot = html;
-          lastEtagSnapshot = etag;
-          if(etag) localStorage.setItem('app_etag', etag);
-          return;
-        }
-        const storedEtag = localStorage.getItem('app_etag');
-        if((etag && storedEtag && etag!== storedEtag) || (html && html!== lastHtmlSnapshot && html.length > 500)){
-          if(etag) localStorage.setItem('app_etag', etag);
-          await doReload();
-        } else {
-          if(etag) localStorage.setItem('app_etag', etag);
-        }
-      }catch{}
-    };
-    checkForUpdate();
-    const id = setInterval(checkForUpdate, 15000);
-    const onVisible = () => { if(document.visibilityState==='visible') checkForUpdate(); };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener('focus', checkForUpdate);
-    return ()=>{
-      clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener('focus', checkForUpdate);
-    };
-  },[]);
-}
+function Shell(){
+  const [page,setPage]=useState<PageKey>(()=>pageFromPath(window.location.pathname));
+  const [searchOpen,setSearchOpen]=useState(false);
+  const [mobileMenuOpen,setMobileMenuOpen]=useState(false);
+  const [dismissed,setDismissed]=useState(false);
+  const [currentUser,setCurrentUser]=useState<any>(null);
 
-function Shell() {
-  useSilentUpdate();
-  const [page, setPage] = useState<PageKey>(() => pageFromPath(window.location.pathname));
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  useEffect(()=>{ const u=onAuthStateChanged(auth, c=>setCurrentUser(c)); return ()=>u(); },[]);
+  useEffect(()=>{ const h=()=>setPage(pageFromPath(window.location.pathname)); window.addEventListener('popstate',h); return ()=>window.removeEventListener('popstate',h); },[]);
 
-  useEffect(()=>{
-    const unsub = onAuthStateChanged(auth, (u)=> setCurrentUser(u));
-    return ()=> unsub();
-  },[]);
-
-  useEffect(()=>{
-    if(!currentUser) return;
-    if('Notification' in window && Notification.permission === 'default'){
-      Notification.requestPermission().catch(()=>{});
-    }
-    const updateLastActive = ()=>{ localStorage.setItem('lastActive', Date.now().toString()); };
-    updateLastActive();
-    window.addEventListener('click', updateLastActive);
-    window.addEventListener('scroll', updateLastActive);
-    document.addEventListener('visibilitychange', updateLastActive);
-    const interval = setInterval(()=>{
-      if(!('Notification' in window)) return;
-      if(Notification.permission!== 'granted') return;
-      if(document.visibilityState!== 'visible') return;
-      const lastSeen = localStorage.getItem('lastActive');
-      const diff = Date.now() - Number(lastSeen || 0);
-      const twoHours = 2 * 60 * 60 * 1000;
-      if(diff > twoHours){
-        const notif = new Notification('PurpleSync 💜', {
-          body: "You haven't voted in 2 hours! Don't miss your daily streak - spend 10 min in Voting tab ✨",
-          icon: '/favicon.ico',
-          badge: '/favicon.ico',
-          tag: 'voting-reminder'
-        });
-        notif.onclick = ()=>{ window.focus(); notif.close(); };
-        localStorage.setItem('lastActive', Date.now().toString());
-      }
-    }, 60 * 60 * 1000);
-    return ()=>{
-      clearInterval(interval);
-      window.removeEventListener('click', updateLastActive);
-      window.removeEventListener('scroll', updateLastActive);
-      document.removeEventListener('visibilitychange', updateLastActive);
-    };
-  },[currentUser]);
-
-  useEffect(() => {
-    const handlePopState = () => setPage(pageFromPath(window.location.pathname));
-    window.addEventListener('popstate', handlePopState);
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('admin') === 'true') setPage('admin');
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  const navigate = (nextPage: PageKey) => {
-    const nextPath = nextPage === 'home'? '/' : `/${nextPage}`;
-    window.history.pushState({}, '', nextPath);
-    setPage(nextPage);
-    setMobileMenuOpen(false);
-    setSearchOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    localStorage.setItem('lastActive', Date.now().toString());
+  const navigate=(next:PageKey)=>{
+    const path=next==='home'?'/':`/${next}`;
+    window.history.pushState({},'',path);
+    setPage(next); setMobileMenuOpen(false); setSearchOpen(false);
+    window.scrollTo({top:0,behavior:'smooth'});
   };
 
-  const content = useMemo(() => {
-    if (page === 'voting') return <Voting onNavigate={navigate as any} />;
-    if (page === 'userAddVoting') return <UserAddVoting onBack={()=>navigate('voting')} />;
-    if (page === 'schedule') return <Schedule />;
-    if (page === 'achievements') return <Achievements />;
-    if (page === 'updates') return <Updates />;
-    if (page === 'links') return <Links />;
-    if (page === 'members') return <Members />;
-    if (page === 'admin') return <Admin />;
-    if (page === 'user-admin') return <UserAdminPanel />;
-    if (page === 'settings') return <Settings />;
-    if (page === 'faq') return <FAQ />;
-    if (page === 'help') return <Help />;
-    if (page === 'palette') return <PaletteOfMemories />;
-    if (page === 'profile') return <Profile onNavigate={navigate} />;
-    if (page === 'quiz') return <QuizPage onBack={()=>navigate('home')} onNavigate={navigate as any} />;
-    return <Home onNavigate={navigate} dismissed={dismissed} onDismiss={() => setDismissed(true)} />;
-  }, [page, dismissed]);
-
-  const isUserAdmin = page === 'user-admin';
-  const isUserAddVoting = page === 'userAddVoting';
+  const content=useMemo(()=>{
+    if(page==='voting') return <Voting onNavigate={navigate as any}/>;
+    if(page==='userAddVoting') return <UserAddVoting onBack={()=>navigate('voting')}/>;
+    if(page==='schedule') return <Schedule/>;
+    if(page==='achievements') return <Achievements/>;
+    if(page==='updates') return <Updates/>;
+    if(page==='links') return <Links/>;
+    if(page==='members') return <Members/>;
+    if(page==='admin') return <Admin/>;
+    if(page==='user-admin') return <UserAdminPanel/>;
+    if(page==='settings') return <Settings/>;
+    if(page==='faq') return <FAQ/>;
+    if(page==='help') return <Help/>;
+    if(page==='palette') return <PaletteOfMemories/>;
+    if(page==='profile') return <Profile onNavigate={navigate}/>;
+    if(page==='quiz') return <QuizPage onBack={()=>navigate('home')} onNavigate={navigate as any}/>;
+    return <Home onNavigate={navigate} dismissed={dismissed} onDismiss={()=>setDismissed(true)}/>;
+  },[page,dismissed]);
 
   return (
     <div className="ps-shell">
       <main className="ps-main ml-0">
-        {!isUserAdmin && <Topbar page={page as any} onNavigate={navigate} onSearch={() => setSearchOpen(true)} onMenu={() => setMobileMenuOpen(true)} />}
+        {page!=='user-admin' && <Topbar page={page as any} onNavigate={navigate} onSearch={()=>setSearchOpen(true)} onMenu={()=>setMobileMenuOpen(true)}/>}
         {content}
       </main>
-      {!isUserAdmin &&!isUserAddVoting && <MobileNav page={page} onNavigate={navigate} />}
-      {searchOpen &&!isUserAdmin && <SearchPanel onClose={() => setSearchOpen(false)} onNavigate={navigate} />}
+      {page!=='user-admin' && page!=='userAddVoting' && <MobileNav page={page} onNavigate={navigate}/>}
+      {searchOpen && <SearchPanel onClose={()=>setSearchOpen(false)} onNavigate={navigate}/>}
     </div>
   );
 }
-
-export default function App() {
-  return (
-    <ErrorBoundary>
-      <Shell />
-    </ErrorBoundary>
-  );
-}
+export default function App(){ return <ErrorBoundary><Shell/></ErrorBoundary>; }
