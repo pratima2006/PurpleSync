@@ -19,6 +19,8 @@ purplesync/
 │   ├── Schedule.tsx
 │   ├── Updates.tsx
 │   └── Voting.tsx
+│   └── PaletteOfMemories.tsx
+│   └── Quiz.tsx
 ├── components/
 │   ├── BrandMark.tsx
 │   ├── data.ts
