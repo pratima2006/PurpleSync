@@ -20,9 +20,8 @@ import Profile from '../app/Profile';
 import { UserAddVoting } from '../components/UserAddVoting';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { QuizPage } from './app/Quiz';
-//... inside router
-{page==='quiz' && <QuizPage onBack={()=>setPage('home')} />}
+import { QuizPage } from '../app/Quiz'; // <-- FIXED: tere screenshot ke hisab se app/ folder se
+
 const validPages: PageKey[] = [
   'home',
   'voting',
@@ -39,6 +38,8 @@ const validPages: PageKey[] = [
   'help',
   'palette',
   'profile',
+  'quiz', // <-- YE ADD KIYA ISLIYE HOME PE JUMP HO RAHA THA
+  'quiz-admin',
 ];
 
 function pageFromPath(pathname: string): PageKey {
@@ -101,41 +102,28 @@ function Shell() {
   const [dismissed, setDismissed] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Auth listener for notifications
   useEffect(()=>{
     const unsub = onAuthStateChanged(auth, (u)=> setCurrentUser(u));
     return ()=> unsub();
   },[]);
 
-  // Daily streak + Voting reminder notifications
   useEffect(()=>{
     if(!currentUser) return;
-
-    // Request permission once
     if('Notification' in window && Notification.permission === 'default'){
       Notification.requestPermission().catch(()=>{});
     }
-
-    const updateLastActive = ()=>{
-      localStorage.setItem('lastActive', Date.now().toString());
-    };
-
-    // Track activity
+    const updateLastActive = ()=>{ localStorage.setItem('lastActive', Date.now().toString()); };
     updateLastActive();
     window.addEventListener('click', updateLastActive);
     window.addEventListener('scroll', updateLastActive);
     document.addEventListener('visibilitychange', updateLastActive);
-
     const interval = setInterval(()=>{
       if(!('Notification' in window)) return;
       if(Notification.permission!== 'granted') return;
       if(document.visibilityState!== 'visible') return;
-
       const lastSeen = localStorage.getItem('lastActive');
       const diff = Date.now() - Number(lastSeen || 0);
       const twoHours = 2 * 60 * 60 * 1000;
-
-      // Only if user inactive for 2 hours
       if(diff > twoHours){
         const notif = new Notification('PurpleSync 💜', {
           body: "You haven't voted in 2 hours! Don't miss your daily streak - spend 10 min in Voting tab ✨",
@@ -143,15 +131,10 @@ function Shell() {
           badge: '/favicon.ico',
           tag: 'voting-reminder'
         });
-        notif.onclick = ()=>{
-          window.focus();
-          notif.close();
-        };
-        // Reset to avoid spamming
+        notif.onclick = ()=>{ window.focus(); notif.close(); };
         localStorage.setItem('lastActive', Date.now().toString());
       }
-    }, 60 * 60 * 1000); // Check every hour
-
+    }, 60 * 60 * 1000);
     return ()=>{
       clearInterval(interval);
       window.removeEventListener('click', updateLastActive);
@@ -193,6 +176,7 @@ function Shell() {
     if (page === 'help') return <Help />;
     if (page === 'palette') return <PaletteOfMemories />;
     if (page === 'profile') return <Profile onNavigate={navigate} />;
+    if (page === 'quiz') return <QuizPage onBack={()=>navigate('home')} onNavigate={navigate as any} />;
     return <Home onNavigate={navigate} dismissed={dismissed} onDismiss={() => setDismissed(true)} />;
   }, [page, dismissed]);
 
