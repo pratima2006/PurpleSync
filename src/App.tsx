@@ -20,7 +20,7 @@ import Profile from '../app/Profile';
 import { UserAddVoting } from '../components/UserAddVoting';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { QuizPage } from './app/Quiz';
+import { QuizPage } from '../app/Quiz';
 //... inside router
 {page==='quiz' && <QuizPage onBack={()=>setPage('home')} />}
 const validPages: PageKey[] = [
