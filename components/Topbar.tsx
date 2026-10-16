@@ -23,13 +23,8 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps){
 
   useEffect(()=>{
     const unsubAuth = onAuthStateChanged(auth, (u)=>{
-      if(u){
-        setUserPhoto(u.photoURL||'');
-        setUserName((u.displayName||'AR').slice(0,2).toUpperCase());
-      } else {
-        setUserPhoto('');
-        setUserName('AR');
-      }
+      if(u){ setUserPhoto(u.photoURL||''); setUserName((u.displayName||'AR').slice(0,2).toUpperCase()); }
+      else { setUserPhoto(''); setUserName('AR'); }
     });
     return ()=>unsubAuth();
   },[]);
@@ -62,7 +57,6 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps){
             <Bell size={17}/>{unread>0 && <><span className="absolute right-1.5 top-1 h-3 w-3 rounded-full bg-red-500 border-2 border-white flex items-center justify-center text-[7px] text-white">{unread>9?'9+':unread}</span><span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-[#aa8be8] animate-ping"/></>}
           </button>
           <button type="button" onClick={()=>onNavigate('links')} className="hidden sm:flex h-9 items-center gap-2 rounded-full bg-white border border-[#ece6f3] px-3.5 text-[11px] font-medium text-[#4c425c] whitespace-nowrap hover:bg-[#f8f5ff]"><Globe2 size={14}/> Official</button>
-          {/* REAL PFP */}
           <button type="button" onClick={()=>onNavigate('profile' as PageKey)} className="flex h-9 w-9 items-center justify-center rounded-full overflow-hidden bg-gradient-to-br from-[#c7b1ec] to-[#8b5cf6] text-[12px] font-semibold text-white shadow-[0_2px_8px_rgba(139,92,246,0.3)] border-2 border-white hover:scale-105 transition-transform">
             {userPhoto? <img src={userPhoto} alt="pfp" className="h-full w-full object-cover"/> : userName}
           </button>
@@ -70,7 +64,6 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps){
         </div>
       </header>
 
-      {/* NOTIF - FIXED FOR PHONE: left-3 right-3 on mobile, not going out */}
       {notifOpen && (
         <div className="absolute left-3 right-3 md:left-auto md:right-4 top-[76px] z-[60] md:w-[360px] rounded-[20px] border border-[#e8e0f2] bg-white shadow-[0_16px_40px_rgba(94,66,143,0.15)] overflow-hidden animate-in fade-in">
           <div className="flex items-center justify-between p-4 border-b border-[#f0e6f8]"><p className="font-semibold text-[13px]">Notifications {unread>0?`(${unread} new)`:''}</p><div className="flex gap-2"><button onClick={markAllRead} className="text-[10px] text-[#704ca5]">Mark all read</button><button onClick={()=>setNotifOpen(false)}><X size={14}/></button></div></div>
@@ -92,7 +85,6 @@ export function Topbar({ page, onNavigate, onSearch, onMenu }: TopbarProps){
           <div className="flex flex-col gap-2">
             <button onClick={()=>{onNavigate('members' as PageKey); setMenuOpen(false);}} className="flex w-full items-center gap-3 rounded-xl bg-[#f8f5ff] px-4 py-3 text-[13px] font-medium text-[#4c425c] hover:bg-[#f0e9f7] border border-[#f0e6f8]"><Users size={16}/> Members</button>
             <button onClick={()=>{onNavigate('links' as PageKey); setMenuOpen(false);}} className="flex w-full items-center gap-3 rounded-xl bg-[#f8f5ff] px-4 py-3 text-[13px] font-medium text-[#4c425c] hover:bg-[#f0e9f7] border border-[#f0e6f8]"><Link2 size={16}/> Official Links</button>
-            {/* QUIZ BUTTON - Added above Palette, same style */}
             <button onClick={()=>{onNavigate('quiz' as PageKey); setMenuOpen(false);}} className="flex w-full items-center gap-3 rounded-xl bg-[#f3eeff] px-4 py-3 text-[13px] font-semibold text-[#5e428f] hover:bg-[#ece3ff] border border-[#dcc9ff]"><BrainCircuit size={16}/> ARMY Quiz Zone <span className="ml-auto text-[9px] bg-[#5e428f] text-white px-2 py-0.5 rounded-full">XP</span></button>
             <button onClick={()=>{onNavigate('palette' as PageKey); setMenuOpen(false);}} className="flex w-full items-center gap-3 rounded-xl bg-[#f0e9f7] px-4 py-3 text-[13px] font-semibold text-[#5e428f] hover:bg-[#e8ddf3] border border-[#d8c9ec]"><Palette size={16}/> Palette of Memories <span className="ml-auto text-[9px] bg-[#5e428f] text-white px-2 py-0.5 rounded-full">NEW</span></button>
           </div>
