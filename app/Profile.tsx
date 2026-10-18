@@ -54,7 +54,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
           setEditName(d.displayName||u.displayName||'');
           if(d.deskNote) setDeskNote(d.deskNote);
         } else {
-          const data={ uid:u.uid, email:u.email, displayName:u.displayName||'Ari', photoURL:u.photoURL||'', createdAt:new Date().toISOString(), deskNote };
+          const data={ uid:u.uid, email:u.email, displayName:u.displayName||'Army', photoURL:u.photoURL||'', createdAt:new Date().toISOString(), deskNote };
           await setDoc(doc(db,'users',u.uid), data);
           setUserData(data);
         }
