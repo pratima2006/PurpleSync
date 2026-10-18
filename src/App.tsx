@@ -24,7 +24,11 @@ import { QuizPage } from '../app/Quiz';
 
 const validPages: PageKey[] = ['home','voting','userAddVoting','schedule','achievements','updates','links','members','admin','user-admin','settings','faq','help','palette','profile','quiz','quiz-admin'];
 
-function pageFromPath(p:string): PageKey { const raw=p.replace(/^\/+/,'').split('/')[0] as PageKey; return validPages.includes(raw)? raw : 'home'; }
+function pageFromPath(p:string): PageKey { 
+  if(window.location.search.includes('admin=true')) return 'admin';
+  const raw=p.replace(/^\/+/,'').split('/')[0] as PageKey; 
+  return validPages.includes(raw)? raw : 'home'; 
+}
 
 function Shell(){
   const [page,setPage]=useState<PageKey>(()=>pageFromPath(window.location.pathname));
@@ -34,7 +38,15 @@ function Shell(){
   const [currentUser,setCurrentUser]=useState<any>(null);
 
   useEffect(()=>{ const u=onAuthStateChanged(auth, c=>setCurrentUser(c)); return ()=>u(); },[]);
-  useEffect(()=>{ const h=()=>setPage(pageFromPath(window.location.pathname)); window.addEventListener('popstate',h); return ()=>window.removeEventListener('popstate',h); },[]);
+  useEffect(()=>{ 
+    const h=()=>setPage(pageFromPath(window.location.pathname)); 
+    window.addEventListener('popstate',h); 
+    if(window.location.search.includes('admin=true')){
+      window.history.replaceState({},'','/admin');
+      setPage('admin');
+    }
+    return ()=>window.removeEventListener('popstate',h); 
+  },[]);
 
   const navigate=(next:PageKey)=>{
     const path=next==='home'?'/':`/${next}`;
