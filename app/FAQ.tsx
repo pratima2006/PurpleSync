@@ -6,6 +6,11 @@ const faqs = [
   { q: "Kya mera data safe hai?", a: "Haan. Hum koi personal login, password ya tracking nahi karte. Firebase sirf public data ke liye use hota hai. No ads, no data selling." },
   { q: "Main content me kaise help kar sakta hu?", a: "Agar tumhe koi official schedule ya update mile jo desk pe nahi hai, to Links page pe jaake source ke saath submit kar sakte ho. Team verify karke add kar degi." },
   { q: "Notifications kaise kaam karte hai?", a: "Abhi notifications sirf in-app hai. Future me comeback ya voting deadline ke liye push notifications ka option Settings me ayega." },
+  // Settings se moved questions
+  { q: "Notifications Settings", a: "Comeback, voting deadlines aur schedule updates ke liye notifications on/off kar sakte ho. Abhi in-app only." },
+  { q: "Appearance", a: "App ka theme abhi light purple hi hai, dark mode jald ayega. Accent colour app ke brand ke hisaab se fixed hai." },
+  { q: "Data & Privacy", a: "Hum koi personal data store nahi karte. Cache clear karna hai to browser cache clear karo, app apne aap reset ho jayega." },
+  { q: "About PurpleSync", a: "Version 1.0 - Built for ARMY by ARMY. All sources verified. No ads." },
 ];
 
 export function FAQ() {
@@ -13,7 +18,6 @@ export function FAQ() {
 
   return (
     <div className="relative min-h-[80vh] overflow-hidden p-6 md:p-10">
-      {/* LIVE BG - fika purple, animated */}
       <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#f8f5ff] via-[#f0edff] to-[#eef2ff]">
         <div className="absolute -top-24 -left-24 h-[400px] w-[400px] rounded-full bg-[#c4b5fd]/40 blur-[80px] animate-[float_8s_ease-in-out_infinite]" />
         <div className="absolute top-40 -right-32 h-[500px] w-[500px] rounded-full bg-[#a78bfa]/30 blur-[90px] animate-[float_10s_ease-in-out_infinite_reverse]" />
