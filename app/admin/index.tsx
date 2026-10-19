@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AchievementsAdmin } from './AchievementsAdmin';
 import { PaletteAdmin } from './PaletteAdmin';
 import { UpdatesAdmin } from './UpdatesAdmin';
-import { VotingAdmin } from './VotingAdmin';
+import { QuizAdmin } from './QuizAdmin';
 import { ScheduleAdmin } from './ScheduleAdmin';
 const PASSWORD = "borahae13";
 export function Admin(){
