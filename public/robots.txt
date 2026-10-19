@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://purple-sync.vercel.app//sitemap.xml
+Sitemap: https://purple-sync.vercel.app/sitemap.xml
