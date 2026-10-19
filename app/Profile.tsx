@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bookmark, Check, ChevronRight, Edit3, Heart, Sparkles, Trophy, Vote, Zap, X, Image as ImageIcon, Pencil, CalendarDays, Link2 } from 'lucide-react';
+import { Bookmark, Check, ChevronRight, Edit3, Heart, Sparkles, Trophy, Vote, Zap, X, LogOut, Trash2, AlertTriangle, Image as ImageIcon, Pencil, CalendarDays, Link2 } from 'lucide-react';
 import './Profile.css';
 import { auth, db } from '../firebase';
 import {
@@ -7,10 +7,12 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  signOut,
+  deleteUser,
   setPersistence,
   browserLocalPersistence
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, getDoc, collection, query, where, getDocs, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 
 const IMGBB_API_KEY = "4e2e98bc940a51d1c6a30f7d1d13bc22";
 
@@ -31,6 +33,8 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
   const [showAuth, setShowAuth] = useState(false);
   const [authMode, setAuthMode] = useState<'login'|'signup'>('login');
   const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deskNote, setDeskNote] = useState({ title: 'Making every vote count.', subtitle: 'Two windows need attention before the weekend.', visibility: 'public' as 'public'|'private' });
   const [editDeskTitle, setEditDeskTitle] = useState('');
   const [editDeskSubtitle, setEditDeskSubtitle] = useState('');
@@ -82,6 +86,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
     if(!user) return; setSaving(true);
     try{
       let photoURL = pfpPreview;
+
       if(pfpLink.trim()){
         photoURL = pfpLink.trim();
       } else if(pfpFile){
@@ -92,6 +97,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
         if(!data.success) throw new Error('imgBB upload failed');
         photoURL = data.data.url;
       }
+
       await updateProfile(user, { displayName: editName, photoURL });
       await setDoc(doc(db,'users',user.uid), { displayName: editName, photoURL, updatedAt:new Date().toISOString() }, {merge:true});
       setUserData((prev:any)=> ({...prev, displayName: editName, photoURL}));
@@ -136,6 +142,16 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
       else await signInWithEmailAndPassword(auth,email,password);
       setShowAuth(false); setEmail(''); setPassword(''); setToast('Logged in!');
     }catch(e:any){ alert(e.message.replace('Firebase:','')); } finally{ setSaving(false); setTimeout(()=>setToast(''),2500); }
+  };
+  const handleLogout = async ()=>{ await signOut(auth); onNavigate?.('home'); };
+  const handleDeleteAccount = async ()=>{
+    if(!user) return; setDeleting(true);
+    try{
+      const q=query(collection(db,'userVotings'), where('ownerId','==',user.uid));
+      const snap=await getDocs(q);
+      for(const d of snap.docs){ const data=d.data(); if(data.verificationStatus==='private') await deleteDoc(d.ref); else await updateDoc(d.ref,{ ownerName:'', ownerId:'deleted_'+user.uid }); }
+      await deleteDoc(doc(db,'users',user.uid)).catch(()=>{}); await deleteUser(user); setShowDeleteConfirm(false); onNavigate?.('home');
+    }catch(e:any){ alert(e.message); } setDeleting(false);
   };
 
   const isGuest =!user;
@@ -186,10 +202,7 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
                 {!pfpPreview && <span>{(userData?.displayName||user?.displayName||'AR').slice(0,2).toUpperCase()}</span>}
                 <div className="ps-profile__avatar-orbit ps-profile__avatar-orbit--one" /><div className="ps-profile__avatar-orbit ps-profile__avatar-orbit--two" />
               </div>
-              <div className="ps-profile__identity-copy">
-                <h1 className="text-[14px] md:text-[15px] font-semibold tracking-tight">@{userData?.displayName||user?.displayName||'Ari'}</h1>
-                <p className="text-[11px] md:text-[12px] mt-[2px] opacity-80">{joinedText()} · keeping the signal close</p>
-              </div>
+              <div className="ps-profile__identity-copy"><h1>{userData?.displayName||user?.displayName||'Ari'}</h1><p>{joinedText()} · keeping the signal close</p></div>
             </div>
             <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:10, marginLeft:'auto'}}>
               <button onClick={()=>setShowEdit(true)} title="Edit profile" style={{height:32,width:32, background:'#fff', border:'1px solid #e9dff6', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.06)'}}><Pencil size={14} /></button>
@@ -210,6 +223,10 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
             </section>
           </div>
           <section className="ps-profile__saved ps-profile__rise"><div className="ps-profile__section-heading"><div><span className="ps-profile__label">SAVED TO MY DESK</span><h2>Keep close</h2></div><button className="ps-profile__text-button" type="button" onClick={()=>setShowSavedAll(true)}>View all <ChevronRight size={14} /></button></div><div className="ps-profile__saved-list">{savedDisplay.slice(0,7).map((note:any, idx:number) => { const Icon = note.icon; return (<article className="ps-profile__saved-card" key={idx}><div className={`ps-profile__saved-icon ps-profile__saved-icon--${note.tone}`}><Icon size={17} /></div><div className="ps-profile__saved-copy"><span className="ps-profile__label">{note.label}</span><h3>{note.title}</h3><p>{note.detail}</p></div><ChevronRight className="ps-profile__saved-arrow" size={16} /></article>);})}</div></section>
+          <div style={{display:'flex', gap:10, marginTop:20}}>
+            <button onClick={()=>setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 border border-red-200 bg-red-50 text-red-600 py-3 rounded-full text-[12px] font-medium"><Trash2 size={14}/> Delete Account</button>
+            <button onClick={handleLogout} className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-full text-[12px] font-medium"><LogOut size={14}/> Logout</button>
+          </div>
           <footer className="ps-profile__footer"><div className="ps-profile__footer-mark">P</div><p>PurpleSync keeps your desk calm,<br />current, and close to the source.</p><span>LOCAL VIEW · PRIVATE</span></footer>
         </div>
       )}
@@ -261,13 +278,10 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
           <div className="bg-white rounded-2xl w-full max-w-[360px] p-6"><div className="flex justify-between items-center mb-4"><h3 className="font-semibold text-[14px]">{authMode==='login'?'Login':'Create Account'}</h3><button onClick={()=>setShowAuth(false)} className="h-7 w-7 bg-gray-100 rounded-full flex items-center justify-center"><X size={12}/></button></div><div className="space-y-3"><input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]"/><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password (min 6)" className="w-full border border-[#e3dced] p-3 rounded-xl text-[13px]"/><button onClick={handleAuth} disabled={saving} className="w-full bg-[#60438f] text-white py-3 rounded-xl text-[13px] font-medium">{saving?'Please wait...': authMode==='login'?'Login':'Create Account'}</button><button onClick={()=>setAuthMode(authMode==='login'?'signup':'login')} className="w-full text-[11px] text-[#704ca5] mt-2">{authMode==='login'?'Need account? Sign up':'Already have account? Login'}</button></div></div>
         </div>
       )}
-      <style>{`
-        @keyframes scaleIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}
-        .ps-scroll-hide::-webkit-scrollbar{display:none}
-        /* PFP - bigger on phone, same on desktop */
-        .ps-profile__avatar{ width:84px !important; height:84px !important; }
-        @media(min-width:768px){ .ps-profile__avatar{ width:64px !important; height:64px !important; } }
-      `}</style>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"><div className="bg-white rounded-2xl w-full max-w-[380px] p-6 animate-[scaleIn_0.25s_ease] shadow-2xl"><h3 className="font-semibold text-[15px]">You really want to delete this account?</h3><div className="mt-4 flex gap-2 items-start bg-red-50 border border-red-200 p-3 rounded-xl"><AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0"/><p className="text-[11px] text-red-700 leading-4">Private boxes deleted forever. Public boxes stay with Verified tick only.</p></div><div className="mt-5 flex gap-2"><button onClick={()=>setShowDeleteConfirm(false)} className="flex-1 bg-gray-100 py-2.5 rounded-xl text-[12px]">Cancel</button><button onClick={handleDeleteAccount} disabled={deleting} className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-[12px] font-medium">{deleting?'Deleting...':'Yes, Delete'}</button></div></div></div>
+      )}
+      <style>{`@keyframes scaleIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}.ps-scroll-hide::-webkit-scrollbar{display:none}`}</style>
     </main>
   );
 }
