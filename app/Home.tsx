@@ -1,4 +1,16 @@
-import {
+{/* SEO ONLY - USER KO DIKHEGA NAHI, GOOGLE KO DIKHEGA */}
+<div style={{position:'absolute', left:'-9999px'}}>
+  <h1>PurpleSync App</h1>
+  <p>PurpleSync App is a fan-made web app for BTS ARMY to track votings, schedules, updates, achievements and official links. Where ARMY stays in sync.</p>
+  <h2>Key Features</h2>
+  <ul>
+    <li>Voting Tracker: Track MAMA, Billboard and official votings</li>
+    <li>Schedule Updates: BTS comeback, tour, Run BTS schedules</li>
+    <li>Achievement Archive: Keep track of BTS records</li>
+    <li>Official Links: All verified links at one place</li>
+  </ul>
+</div>
+  import {
   ArrowUpRight,
   ChevronRight,
   FileText,
