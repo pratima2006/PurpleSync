@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bookmark, Check, ChevronRight, Edit3, Heart, Sparkles, Trophy, Vote, Zap, X, LogOut, Trash2, AlertTriangle, Image as ImageIcon, Pencil, CalendarDays, Link2 } from 'lucide-react';
+import { Bookmark, Check, ChevronRight, Edit3, Heart, Sparkles, Trophy, Vote, Zap, X, AlertTriangle, Image as ImageIcon, Pencil, CalendarDays, Link2 } from 'lucide-react';
 import './Profile.css';
 import { auth, db } from '../firebase';
 import {
@@ -86,7 +86,6 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
     if(!user) return; setSaving(true);
     try{
       let photoURL = pfpPreview;
-
       if(pfpLink.trim()){
         photoURL = pfpLink.trim();
       } else if(pfpFile){
@@ -97,7 +96,6 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
         if(!data.success) throw new Error('imgBB upload failed');
         photoURL = data.data.url;
       }
-
       await updateProfile(user, { displayName: editName, photoURL });
       await setDoc(doc(db,'users',user.uid), { displayName: editName, photoURL, updatedAt:new Date().toISOString() }, {merge:true});
       setUserData((prev:any)=> ({...prev, displayName: editName, photoURL}));
@@ -202,7 +200,11 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
                 {!pfpPreview && <span>{(userData?.displayName||user?.displayName||'AR').slice(0,2).toUpperCase()}</span>}
                 <div className="ps-profile__avatar-orbit ps-profile__avatar-orbit--one" /><div className="ps-profile__avatar-orbit ps-profile__avatar-orbit--two" />
               </div>
-              <div className="ps-profile__identity-copy"><h1>{userData?.displayName||user?.displayName||'Ari'}</h1><p>{joinedText()} · keeping the signal close</p></div>
+              <div className="ps-profile__identity-copy">
+                {/* REFERENCE PIC 1 & 2 JAISA - @ ke saath serif font */}
+                <h1>@{userData?.displayName||user?.displayName||'Ari'}</h1>
+                <p>{joinedText()} · keeping the signal close</p>
+              </div>
             </div>
             <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:10, marginLeft:'auto'}}>
               <button onClick={()=>setShowEdit(true)} title="Edit profile" style={{height:32,width:32, background:'#fff', border:'1px solid #e9dff6', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.06)'}}><Pencil size={14} /></button>
@@ -223,10 +225,6 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
             </section>
           </div>
           <section className="ps-profile__saved ps-profile__rise"><div className="ps-profile__section-heading"><div><span className="ps-profile__label">SAVED TO MY DESK</span><h2>Keep close</h2></div><button className="ps-profile__text-button" type="button" onClick={()=>setShowSavedAll(true)}>View all <ChevronRight size={14} /></button></div><div className="ps-profile__saved-list">{savedDisplay.slice(0,7).map((note:any, idx:number) => { const Icon = note.icon; return (<article className="ps-profile__saved-card" key={idx}><div className={`ps-profile__saved-icon ps-profile__saved-icon--${note.tone}`}><Icon size={17} /></div><div className="ps-profile__saved-copy"><span className="ps-profile__label">{note.label}</span><h3>{note.title}</h3><p>{note.detail}</p></div><ChevronRight className="ps-profile__saved-arrow" size={16} /></article>);})}</div></section>
-          <div style={{display:'flex', gap:10, marginTop:20}}>
-            <button onClick={()=>setShowDeleteConfirm(true)} className="flex-1 flex items-center justify-center gap-2 border border-red-200 bg-red-50 text-red-600 py-3 rounded-full text-[12px] font-medium"><Trash2 size={14}/> Delete Account</button>
-            <button onClick={handleLogout} className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white py-3 rounded-full text-[12px] font-medium"><LogOut size={14}/> Logout</button>
-          </div>
           <footer className="ps-profile__footer"><div className="ps-profile__footer-mark">P</div><p>PurpleSync keeps your desk calm,<br />current, and close to the source.</p><span>LOCAL VIEW · PRIVATE</span></footer>
         </div>
       )}
@@ -281,7 +279,13 @@ export default function Profile({ onNavigate }: { onNavigate?: (p:any)=>void }) 
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4"><div className="bg-white rounded-2xl w-full max-w-[380px] p-6 animate-[scaleIn_0.25s_ease] shadow-2xl"><h3 className="font-semibold text-[15px]">You really want to delete this account?</h3><div className="mt-4 flex gap-2 items-start bg-red-50 border border-red-200 p-3 rounded-xl"><AlertTriangle size={16} className="text-red-500 mt-0.5 shrink-0"/><p className="text-[11px] text-red-700 leading-4">Private boxes deleted forever. Public boxes stay with Verified tick only.</p></div><div className="mt-5 flex gap-2"><button onClick={()=>setShowDeleteConfirm(false)} className="flex-1 bg-gray-100 py-2.5 rounded-xl text-[12px]">Cancel</button><button onClick={handleDeleteAccount} disabled={deleting} className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-[12px] font-medium">{deleting?'Deleting...':'Yes, Delete'}</button></div></div></div>
       )}
-      <style>{`@keyframes scaleIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}.ps-scroll-hide::-webkit-scrollbar{display:none}`}</style>
+      <style>{`
+        @keyframes scaleIn{from{transform:scale(0.92);opacity:0}to{transform:scale(1);opacity:1}}
+        .ps-scroll-hide::-webkit-scrollbar{display:none}
+        /* PFP size - phone pe thoda big, desktop pe same reference jaisa */
+        .ps-profile__avatar{ width:84px !important; height:84px !important; }
+        @media(min-width:768px){ .ps-profile__avatar{ width:96px !important; height:96px !important; } }
+      `}</style>
     </main>
   );
 }
