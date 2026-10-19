@@ -1,3 +1,4 @@
+<h1 style={{position:'absolute', left:'-9999px'}}>PurpleSync App - Fanmade App for BTS ARMY</h1>
 import { useEffect, useMemo, useState } from 'react';
 import { Achievements } from '../app/Achievements';
 import Home from '../app/Home';
