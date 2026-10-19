@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { Trophy, Archive, Bell, Disc3, Users, Sparkles, Plus, Trash2, Eye, EyeOff, Pencil, Save } from 'lucide-react';
 
 type Question = { q:string, options:string[], correct:number, xp:number };
@@ -75,7 +75,7 @@ export function QuizAdmin(){
             <div key={q.id} className={`border rounded-[14px] p-3 ${!q.isVisible?'opacity-50 bg-gray-50':''}`}>
               <div className="flex justify-between">
                 <div>
-                  <p className="font-semibold text-[12px]">{q.title} <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#efe8ff] ml-1">{q.category}</span> {q.category==='voting' ? <span className="text-[9px] bg-orange-100 px-2 py-0.5 rounded-full">{q.subCategory}</span> : <span className="text-[9px] bg-blue-100 px-2 py-0.5 rounded-full">{q.subCategory}</span>}</p>
+                  <p className="font-semibold text-[12px]">{q.title} <span className="text-[9px] px-2 py-0.5 rounded-full bg-[#efe8ff] ml-1">{q.category}</span> <span className="text-[9px] bg-orange-100 px-2 py-0.5 rounded-full">{q.subCategory}</span></p>
                   <p className="text-[10px] text-gray-500 mt-1">{q.questions.length} Qs • {q.questions.reduce((a,b)=>a+b.xp,0)} XP • by {q.createdBy} {q.isVisible?'':'• Hidden'}</p>
                 </div>
                 <div className="flex gap-1">
@@ -115,7 +115,6 @@ export function QuizAdmin(){
             </div>
             <label className="text-[11px] font-semibold mt-3 block">Quiz Title</label>
             <input value={title} onChange={e=>setTitle(e.target.value)} placeholder={`e.g., ${subCategory} Discography Quiz`} className="w-full border rounded-xl p-3 mt-1 text-[13px]"/>
-            <p className="text-[10px] text-gray-400 mt-2">For now keep {category} as Coming Soon - only voting is live. You can still add but won't show till you enable.</p>
           </div>
         )}
 
