@@ -192,13 +192,10 @@ function AlbumDetail({ album, member, onBack }: { album: any; member: string; on
       {/* SOURCE & DISCLAIMER BOXES - SAME STYLE AS COPYRIGHT */}
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl bg-[#f9f5ff] border border-[#e0d4ed] p-5">
-          <p className="ps-mono text-[9px] text-[#8068a9]">SOURCE</p>
-          <p className="mt-2 text-[11px] leading-5 text-[#6d5a82]">Data sourced from BIGHIT MUSIC official website (ibighit.com), Wikipedia, Spotify, Apple Music, Melon, and YouTube Music official listings. Album covers are low-resolution thumbnails used under fair use for identification.</p>
+          <p className="ps-mono text-[9px] text-[#8068a9]">SOURCE & DISCLAIMER </p>
+          <p className="mt-2 text-[11px] leading-5 text-[#6d5a82]"> All album artworks, music, logos, and trademarks belong to BIGHIT MUSIC / HYBE Labels. PurpleSync is a non-commercial fan-made archive by ARMY for ARMY. No copyright infringement intended. All streaming links redirect to official platforms to support the artists directly.Album covers are low-resolution thumbnails used under fair use for identification.</p>
         </div>
-        <div className="rounded-2xl bg-[#2f2450] p-5 text-white">
-          <p className="ps-mono text-[9px] text-[#c0b5d2]">DISCLAIMER / COPYRIGHT</p>
-          <p className="mt-2 text-[11px] leading-5 text-[#c0b5d2]">All album artworks, music, logos, and trademarks belong to BIGHIT MUSIC / HYBE Labels. PurpleSync is a non-commercial fan-made archive by ARMY for ARMY. No copyright infringement intended. All streaming links redirect to official platforms to support the artists directly. If you are a rights holder and wish removal, contact us.</p>
-        </div>
+       </div>
       </div>
     </div>
   );
