@@ -42,7 +42,7 @@ const discographyData: Record<string, any[]> = {
     { title: "Killin' It Girl", date: "Jun 13, 2025", tracks: "1 Track", type: "Single", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400", links: { spotify: "#", youtube: "#", apple: "#", melon: "#", itunes: "#" } },
   ],
   Jimin: [
-    { title: "MUSE", date: "Jul 19, 2024", tracks: "7 Tracks", type: "Album", cover: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400", links: { spotify: "#", youtube: "#", apple: "#", melon: "#", itunes: "#" } },
+    { title: "MUSE", date: "Jul 19, 2024", tracks: "7 Tracks", type: "Album", cover: "https://images.unsplash.com/photo-1496293455970-f8581aae0e3b?w=400", links: { spotify: "#", youtube: "#", apple: "#", melon: "#", itunes: "#" } },
     { title: "FACE", date: "Mar 24, 2023", tracks: "6 Tracks", type: "Album", cover: "https://images.unsplash.com/photo-1496293455970-f8581aae0e3b?w=400", links: { spotify: "#", youtube: "#", apple: "#", melon: "#", itunes: "#" } },
     { title: "Promise", date: "Dec 31, 2018", tracks: "1 Track", type: "Single", cover: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=400", links: { spotify: "#", youtube: "#", apple: "#", melon: "#", itunes: "#" } },
   ],
@@ -60,54 +60,79 @@ const discographyData: Record<string, any[]> = {
 
 function AlbumRow({ album }: { album: any }) {
   const [coverHover, setCoverHover] = useState(false);
+
+  // Sirf valid links dikhao
+  const validLinks = Object.entries(album.links).filter(([_, url]: any) => url && url !== "#" && url.trim() !== "");
+
   return (
-    <div className="flex flex-col md:flex-row items-start gap-6 md:gap-12 rounded-2xl border border-[#e0d4ed] bg-white p-5">
-      {/* SIRF COVER PE HOVER - YAHI FIX HAI */}
+    <div className="flex flex-col md:flex-row items-start gap-6 md:gap-10 rounded-2xl border border-[#e0d4ed] bg-white p-5">
+      {/* COVER WRAPPER - SIRF ISPE HOVER */}
       <div 
         className="relative h-[220px] w-[220px] shrink-0 cursor-pointer"
         onMouseEnter={() => setCoverHover(true)}
         onMouseLeave={() => setCoverHover(false)}
         onClick={() => setCoverHover(!coverHover)}
       >
-        {/* DISC - ANDAR CHHUPI HUI, SIRF COVER HOVER PE NIKLEGI */}
-        <div className={`absolute top-1/2 left-1/2 h-[200px] w-[200px] -translate-y-1/2 rounded-full bg-[#121212] flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${coverHover ? 'translate-x-[15%] opacity-100 rotate-[180deg]' : '-translate-x-1/2 opacity-0 rotate-0 scale-90'}`} style={{ boxShadow: '0 0 0 4px #222' }}>
-          <div className={`h-full w-full rounded-full flex items-center justify-center ${coverHover ? 'animate-[spin_3s_linear_infinite]' : ''}`} style={{ background: 'repeating-radial-gradient(circle at center, #222 0 2px, #111 2px 4px)' }}>
+        {/* DISC - THODA SA BAHAR - PEHLE SE ANDAR */}
+        <div 
+          className="absolute top-1/2 left-1/2 h-[200px] w-[200px] rounded-full bg-[#121212] flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+          style={{ 
+            boxShadow: '0 0 0 4px #222',
+            transform: coverHover ? 'translate(-15%, -50%) rotate(180deg)' : 'translate(-50%, -50%) rotate(0deg) scale(0.9)',
+            opacity: coverHover ? 1 : 0
+          }}
+        >
+          <div className="h-full w-full rounded-full flex items-center justify-center" style={{ background: 'repeating-radial-gradient(circle at center, #222 0 2px, #111 2px 4px)', animation: coverHover ? 'spin 3s linear infinite' : 'none' }}>
             <div className="h-8 w-8 rounded-full bg-[#704ca5] border-4 border-black" />
           </div>
         </div>
-        <div className="relative z-10 h-full w-full overflow-hidden rounded-xl shadow-md">
+
+        {/* COVER WITH TILT - VIDEO JAISA */}
+        <div 
+          className="relative z-10 h-full w-full overflow-hidden rounded-xl shadow-md transition-all duration-500 ease-out"
+          style={{
+            transform: coverHover ? 'rotate(-4deg) translateY(-4px) scale(1.02)' : 'rotate(0deg) translateY(0) scale(1)',
+            boxShadow: coverHover ? '0 10px 30px rgba(0,0,0,0.2)' : '0 2px 10px rgba(0,0,0,0.1)'
+          }}
+        >
           <img src={album.cover} alt={album.title} className="h-full w-full object-cover" />
         </div>
       </div>
 
-      {/* INFO - GAP KE SATH, AB OVERLAP NAHI HOGA */}
+      {/* INFO */}
       <div className="flex-1 pt-1">
         <p className="ps-mono text-[9px] text-[#aa9eac]">{album.type}</p>
-        <h3 className="mt-1 text-[20px] font-bold text-[#332840]">{album.title}</h3>
-        <div className="mt-2 flex gap-2">
+        <h3 className="mt-1 text-[18px] font-bold leading-tight text-[#332840]">{album.title}</h3>
+        <div className="mt-2 flex gap-2 flex-wrap">
           <span className="rounded-full bg-[#f1e9f9] px-3 py-1 text-[10px]">{album.date}</span>
           <span className="rounded-full bg-[#eee5f7] px-3 py-1 text-[10px] text-[#704ca5]">{album.tracks}</span>
         </div>
 
-        {/* REAL ICONS ONLY - NO NAMES - REAL COLORS */}
-        <div className="mt-5 flex gap-2">
-          <a href={album.links.spotify} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-[#1DB954] text-white hover:scale-110 transition-transform">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-          </a>
-          <a href={album.links.youtube} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-[#FF0000] text-white hover:scale-110 transition-transform">
-            <svg width="18" height="12" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
-          </a>
-          <a href={album.links.apple} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-black text-white hover:scale-110 transition-transform">
-            <span className="text-[16px]"></span>
-          </a>
-          <a href={album.links.itunes} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#FA1744] to-[#FB5A8D] text-white hover:scale-110 transition-transform">
-            <span className="text-[14px] font-bold">♪</span>
-          </a>
-          <a href={album.links.melon} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-white border border-[#00D344] text-[#00D344] hover:bg-[#00D344] hover:text-white hover:scale-110 transition-all">
-            <span className="text-[10px] font-black">M</span>
-          </a>
+        {/* REAL ICONS ONLY - JO LINK HAI WAHI DIKHEGA */}
+        <div className="mt-5 flex gap-2 flex-wrap">
+          {validLinks.map(([platform, url]: any) => {
+            if (platform === 'spotify') return (
+              <a key={platform} href={url} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-[#1DB954] text-white hover:scale-110 transition-transform">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+              </a>
+            );
+            if (platform === 'youtube') return (
+              <a key={platform} href={url} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-[#FF0000] text-white hover:scale-110 transition-transform">
+                <svg width="18" height="12" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              </a>
+            );
+            if (platform === 'apple') return (
+              <a key={platform} href={url} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-black text-white hover:scale-110 transition-transform"><span className="text-[16px]"></span></a>
+            );
+            if (platform === 'itunes') return (
+              <a key={platform} href={url} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-[#FA1744] to-[#FB5A8D] text-white hover:scale-110 transition-transform"><span className="text-[14px] font-bold">♪</span></a>
+            );
+            if (platform === 'melon') return (
+              <a key={platform} href={url} target="_blank" className="grid h-9 w-9 place-items-center rounded-full bg-white border border-[#00D344] text-[#00D344] hover:bg-[#00D344] hover:text-white hover:scale-110 transition-all"><span className="text-[10px] font-black">M</span></a>
+            );
+            return null;
+          })}
         </div>
-        <p className="mt-3 text-[10px] text-[#aa9eac]">Tap cover to open disc • Tap icons to open real album</p>
       </div>
     </div>
   );
@@ -119,9 +144,10 @@ export function Members() {
     const albums = discographyData[selectedMember] || [];
     return (
       <div className="ps-page-enter ps-content py-8 md:py-12">
-        <button onClick={() => setSelectedMember(null)} className="mb-6 flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-[12px]"><ArrowLeft size={14}/> Back</button>
+        <button onClick={() => setSelectedMember(null)} className="mb-6 flex items-center gap-2 rounded-full border bg-white px-4 py-2 text-[12px]"><ArrowLeft size={14}/> Back to Members</button>
         <p className="ps-mono text-[9px] text-[#8068a9]">DISCOGRAPHY</p>
         <h1 className="ps-display mt-2 text-[42px] text-[#332840]">{selectedMember} <em className="text-[#704ca5]">Archive</em></h1>
+        <p className="mt-2 text-[11px] text-[#81758d]">Hover only on cover - disc will pop. Tap on phone.</p>
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {albums.map((al) => <AlbumRow key={al.title} album={al} />)}
         </div>
