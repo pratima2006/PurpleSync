@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Trash2, Pencil, Mic, Radio, Sparkles, EyeOff } from 'lucide-react';
+import { Trash2, Pencil, EyeOff, Clock } from 'lucide-react';
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const SHORT = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
@@ -15,7 +15,34 @@ export function ScheduleAdmin(){
   const [form,setForm]=useState({ title:'', type:'Performance', time:'19:00 KST', location:'', links:[''], date: toDateStr(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) });
   const [editId,setEditId]=useState<string|null>(null);
 
-  useEffect(()=>{ const unsub=onSnapshot(collection(db,"scheduleItems"), s=> setItems(s.docs.map(d=>({id:d.id,...d.data()} as any)))); return ()=>unsub(); },[]);
+  // Real-time Seoul clock state
+  const [seoulTime, setSeoulTime] = useState('');
+
+  useEffect(()=>{
+    const unsub=onSnapshot(collection(db,"scheduleItems"), s=> setItems(s.docs.map(d=>({id:d.id,...d.data()} as any)))); 
+    return ()=>unsub(); 
+  },[]);
+
+  // Timer for Real-Time Seoul Clock (AM/PM)
+  useEffect(() => {
+    const updateSeoulClock = () => {
+      try {
+        const timeStr = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'Asia/Seoul',
+          hour: 'numeric',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: true
+        }).format(new Date());
+        setSeoulTime(timeStr);
+      } catch {
+        setSeoulTime('');
+      }
+    };
+    updateSeoulClock();
+    const interval = setInterval(updateSeoulClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1,0).getDate();
   const startDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(),1).getDay();
@@ -23,17 +50,41 @@ export function ScheduleAdmin(){
 
   const save=async()=>{
     if(!form.title.trim()) return alert('Title required');
-    const payload = {...form, day: String(new Date(form.date).getDate()), month: SHORT[new Date(form.date).getMonth()], weekday: ["SUN","MON","TUE","WED","THU","FRI","SAT"][new Date(form.date).getDay()], year: new Date(form.date).getFullYear(), links: form.links.filter(Boolean), createdAt: new Date().toISOString() };
+    const parts = form.date.split('-');
+    const evYear = parseInt(parts[0]) || new Date().getFullYear();
+    const evMonthIdx = (parseInt(parts[1])-1) || new Date().getMonth();
+    const evDayNum = parseInt(parts[2]) || new Date().getDate();
+    const evDateObj = new Date(evYear, evMonthIdx, evDayNum);
+
+    const payload = {
+      ...form, 
+      day: String(evDayNum), 
+      month: SHORT[evMonthIdx], 
+      weekday: ["SUN","MON","TUE","WED","THU","FRI","SAT"][evDateObj.getDay()], 
+      year: evYear, 
+      links: form.links.filter(Boolean), 
+      createdAt: new Date().toISOString() 
+    };
+
     if(editId) await updateDoc(doc(db,"scheduleItems",editId), payload as any);
     else await addDoc(collection(db,"scheduleItems"), payload as any);
-    setForm({ title:'', type:'Performance', time:'19:00 KST', location:'', links:[''], date: form.date }); setEditId(null);
+    
+    setForm({ title:'', type:'Performance', time:'19:00 KST', location:'', links:[''], date: form.date }); 
+    setEditId(null);
   };
 
   const selectedList = dayEvents(selectedDate);
 
   return (
     <div className="space-y-4">
-      <h2 className="font-semibold text-[14px]">Schedule · {items.length} · Calendar View</h2>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b pb-3">
+        <h2 className="font-semibold text-[14px]">Schedule · {items.length} Events · Calendar View</h2>
+        {/* Real-time Seoul Clock Badge */}
+        <div className="flex items-center gap-2 bg-[#f8f5ff] border border-[#ded7e9] px-3 py-1.5 rounded-xl text-[11px] font-medium text-[#60438f]">
+          <Clock size={13} className="text-[#8b5cf6]" />
+          <span>Seoul (KST) Live: <strong className="font-bold">{seoulTime || 'Loading...'}</strong></span>
+        </div>
+      </div>
 
       <div className="rounded-2xl border bg-white p-4">
         <div className="mb-3 flex justify-between"><h3 className="font-semibold">{MONTHS[currentMonth.getMonth()]} {currentMonth.getFullYear()}</h3><div className="flex gap-1"><button onClick={()=>setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1,1))} className="rounded border px-2">{"<"}</button><button onClick={()=>setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1,1))} className="rounded border px-2">{">"}</button></div></div>
