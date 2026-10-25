@@ -45,11 +45,10 @@ function getTimeInTimezone(tz: string, dateStr?: string){
   }catch{ return ""; }
 }
 function convertTimeFromKST(timeStr: string, targetTz: string, eventDate: Date){
-  if(!timeStr ||!timeStr.includes(':')) return timeStr;
+  if(!timeStr || !timeStr.includes(':')) return timeStr;
   try{
     const [h,m] = timeStr.split(':').map(n=>parseInt(n));
     if(isNaN(h)) return timeStr;
-    // KST = UTC+9, so UTC = KST -9
     const utc = Date.UTC(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate(), h-9, m||0);
     const converted = new Intl.DateTimeFormat('en-US', { timeZone: targetTz, hour:'numeric', minute:'2-digit', hour12:true }).format(new Date(utc));
     return converted;
@@ -57,7 +56,14 @@ function convertTimeFromKST(timeStr: string, targetTz: string, eventDate: Date){
 }
 
 function getDateFromItem(it:any): Date | null {
-  if(it?.date){ const d=new Date(it.date); if(!isNaN(d.getTime())) return d; }
+  if(it?.date){
+    const parts = it.date.split('-');
+    if(parts.length === 3){
+      const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+      if(!isNaN(d.getTime())) return d;
+    }
+    const d=new Date(it.date); if(!isNaN(d.getTime())) return d;
+  }
   if(it?.day && it?.month){
     const m = SHORT_MAP[it.month?.toUpperCase()];
     if(m!==undefined){
@@ -80,6 +86,13 @@ export function Schedule() {
   const [tempYear, setTempYear] = useState(()=> getDateInTimezone(REGIONS[0].tz).getFullYear());
   const [tempMonth, setTempMonth] = useState(()=> getDateInTimezone(REGIONS[0].tz).getMonth());
 
+  // Real-time ticker for zone time display
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "scheduleItems"), (snap) => {
       const fb = snap.docs.map(d => ({ id: d.id,...d.data() } as any)).filter((x:any)=>!x.hidden);
@@ -89,7 +102,6 @@ export function Schedule() {
     return () => unsub();
   }, []);
 
-  // Jab region change ho to calendar us region ke aaj ke date pe jaye
   useEffect(()=>{
     const zonedNow = getDateInTimezone(selectedRegion.tz);
     setCurrentMonth(new Date(zonedNow.getFullYear(), zonedNow.getMonth(), 1));
@@ -233,12 +245,11 @@ export function Schedule() {
             </div>
           )}
 
-          {/* CONFIRMATION BOX LIKE ACHIEVEMENTS PAGE */}
           <div className="ps-panel mt-6 flex gap-3 rounded-2xl bg-[#fffbeb] p-4 md:p-5 border border-[#fde68a]">
             <Info size={16} className="mt-0.5 shrink-0 text-[#d97706]"/>
             <div>
               <p className="text-[12px] font-semibold text-[#92400e]">Schedule Information</p>
-              <p className="mt-1 text-[11px] leading-5 text-[#a16207]">Timings are converted from KST to your selected timezone ({selectedRegion.name}). Some content may be delayed or changed by official sources. Please verify on official channels. This week & calendar automatically adjust based on your region — Korea is 3.5 hrs ahead of India, USA is behind. If you see incorrect info, contact admin.</p>
+              <p className="mt-1 text-[11px] leading-5 text-[#a16207]">Timings are converted from KST to your selected timezone ({selectedRegion.name}). Some content may be delayed or changed by official sources. Please verify on official channels. This week & calendar automatically adjust based on your region. If you see incorrect info, contact admin.</p>
             </div>
           </div>
         </>
@@ -254,7 +265,7 @@ export function Schedule() {
               const evDate = getDateFromItem(item) || today;
               const displayTime = convertTimeFromKST(item.time, selectedRegion.tz, evDate);
               return (
-              <article key={item.id || item.day + item.title} className={`flex gap-4 px-5 py-5 md:gap-7 md:px-7 ${index!== arr.length - 1? 'border-b border-[#eeeaf3]' : ''}`}>
+              <article key={item.id || item.day + item.title} className={`flex gap-4 px-5 py-5 md:gap-7 md:px-7 ${index!== arr.length - 1? 'border-b border-[#eeeaf3] ' : ''}`}>
                 <div className="flex w-12 shrink-0 flex-col items-center">
                   <span className="ps-mono text-[9px] text-[#9a8ea2]">{item.month}</span>
                   <span className="mt-1 text-[27px] font-semibold leading-7 tracking-[-.06em] text-[#4b3b5e]">{item.day}</span>
